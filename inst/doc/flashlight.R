@@ -10,7 +10,7 @@ knitr::opts_chunk$set(
 
 ## ----setup---------------------------------------------------------------
 library(flashlight)      # model interpretation
-library(MetricsWeighted) # Metrics
+library(MetricsWeighted) # metrics
 library(dplyr)           # data prep
 library(moderndive)      # data
 library(caret)           # data split
@@ -47,6 +47,10 @@ plot(light_effects(fl, v = "Petal.Width", stats = "quartiles"))
 eff <- light_effects(fl, v = "Petal.Width", by = "Species")
 plot(eff) %>% 
   plot_counts(eff, alpha = 0.2)
+
+# Variable contribution breakdown for single observation
+plot(light_breakdown(fl, new_obs = iris[2, ]))
+
 
 ## ------------------------------------------------------------------------
 head(house_prices)
@@ -242,6 +246,14 @@ p <- plot(eff, rotate_x = FALSE) +
 plot_counts(p, eff, fill = "blue", alpha = 0.2, width = 0.3)
 
 ## ------------------------------------------------------------------------
+bd <- light_breakdown(fl_lm, new_obs = valid[1, ], v = x, n_max = 1000, seed = 74) 
+plot(bd, size = 3)
+
+## ------------------------------------------------------------------------
+bd <- light_breakdown(fl_lm, new_obs = valid[1, ], v = x, n_max = 1000, seed = 74, top_m = 4) 
+plot(bd)
+
+## ------------------------------------------------------------------------
 fls <- multiflashlight(fls, by = "year")
 
 # Performance
@@ -276,6 +288,10 @@ p <- plot(z) +
   coord_cartesian(ylim = c(0, 3e6))
 plot_counts(p, z, alpha = 0.2)
 
+# Variable contribution breakdown for single observation (on log-scale)
+# -> "by" selects the relevant rows in data/valid
+plot(light_breakdown(fl_lm, new_obs = valid[1, ], v = x, top_m = 3))
+
 
 ## ------------------------------------------------------------------------
 # Add weight info to the flashlight
@@ -305,6 +321,9 @@ eff <- light_effects(fls, v = "Petal.Width", stats = "quartiles")
 plot(eff) %>% 
   plot_counts(eff, alpha = 0.2, fill = "blue")
 
+# Variable contribution breakdown for single observation (on log-scale)
+plot(light_breakdown(fls, new_obs = iris[2, ]), size = 2.5)
+
 ## ------------------------------------------------------------------------
 ir <- iris
 ir$virginica <- ir$Species == "virginica"
@@ -320,7 +339,7 @@ fl <- flashlight(model = fit, data = ir, y = "virginica", label = "lr",
 plot(light_performance(fl), fill = "darkred")
 
 # Variable importance by drop in rmse
-plot(light_importance(fl), fill = "darkred")
+plot(light_importance(fl, v = c("Sepal.Length", "Petal.Width")), fill = "darkred")
 
 # ICE profiles for Petal.Width
 plot(light_ice(fl, v = "Petal.Width"), alpha = 0.4)
@@ -331,4 +350,8 @@ plot(light_profile(fl, v = "Petal.Width"))
 # Observed, predicted, and partial dependence profiles
 eff <- light_effects(fl, v = "Petal.Width")
 plot_counts(plot(eff), eff, alpha = 0.2)
+
+# Variable contribution breakdown for single observation
+plot(light_breakdown(fl, new_obs = ir[2, ], v = c("Sepal.Length", "Petal.Width")))
+
 

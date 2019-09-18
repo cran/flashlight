@@ -37,7 +37,7 @@
 #' x <- light_effects(mod_full, v = "Petal.Width", by = "Species")
 #' plot(x)
 #' p <- plot(x, zero_counts = FALSE)
-#' plot_counts(p, x, zero_counts = FALSE, alpha = 0.2)
+#' plot_counts(p, x, alpha = 0.2)
 #'
 #' plot(light_effects(mod_full, v = "Petal.Width", by = "Species",
 #'   stats = "quartiles"))
@@ -60,7 +60,7 @@ plot.light_effects <- function(x, use = c("response", "predicted", "pd"),
 
   # Remove 0 count entries in "data"
   n <- nrow(data)
-  if (nby + multi >= 1L && !zero_counts && n) {
+  if (!zero_counts && n) {
     data <- semi_join(data, x$response, by = c(x$label_name, x$by, x$v))
   }
 
