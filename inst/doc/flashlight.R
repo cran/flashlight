@@ -29,24 +29,33 @@ fl <- flashlight(model = fit, data = iris, y = "Sepal.Length", label = "ols",
 plot(light_performance(fl), fill = "darkred")
 plot(light_performance(fl, by = "Species"), fill = "darkred")
 
-# Variable importance by drop in rmse
-plot(light_importance(fl), fill = "darkred")
-plot(light_importance(fl, by = "Species"), fill = "darkblue", alpha = 0.7)
+# Variable importance by increase in rmse
+imp <- light_importance(fl)
+plot(imp, fill = "darkred")
+plot(light_importance(fl, by = "Species")) +
+   scale_fill_viridis_d(begin = 0.2, end = 0.8)
+most_important(imp, 2)
 
 # ICE profiles for Petal.Width
-plot(light_ice(fl, v = "Petal.Width"), alpha = 0.4)
+plot(light_ice(fl, v = "Petal.Width"))
+plot(light_ice(fl, v = "Petal.Width", center = TRUE))
 plot(light_ice(fl, v = "Petal.Width", by = "Species"))
 
 # Partial dependence profiles for Petal.Width
 plot(light_profile(fl, v = "Petal.Width"))
 plot(light_profile(fl, v = "Petal.Width", by = "Species"))
 
-# Observed, predicted, and partial dependence profiles
-plot(light_effects(fl, v = "Petal.Width"))
-plot(light_effects(fl, v = "Petal.Width", stats = "quartiles"))
-eff <- light_effects(fl, v = "Petal.Width", by = "Species")
-plot(eff) %>% 
-  plot_counts(eff, alpha = 0.2)
+# Accumulated local effects (ALE) profiles for Petal.Width
+plot(light_profile(fl, v = "Petal.Width", type = "ale"))
+plot(light_profile(fl, v = "Petal.Width", by = "Species", type = "ale"))
+
+# Prediction, response and residual profiles
+plot(light_profile(fl, v = "Petal.Width", type = "response", stats = "quartiles"))
+plot(light_profile(fl, v = "Petal.Width", type = "predicted"))
+plot(light_profile(fl, v = "Petal.Width", type = "residual", stats = "quartiles"))
+
+# Response profiles, prediction profiles, partial depencence, and ALE profiles in one
+plot(light_effects(fl, v = "Petal.Width"), use = "all")
 
 # Variable contribution breakdown for single observation
 plot(light_breakdown(fl, new_obs = iris[2, ]))
@@ -176,6 +185,10 @@ cp <- light_ice(fls, v = "sqft_living", n_max = 30, seed = 35)
 plot(cp, alpha = 0.2)
 
 ## ------------------------------------------------------------------------
+cp <- light_ice(fls, v = "sqft_living", n_max = 30, seed = 35, center = TRUE)
+plot(cp, alpha = 0.2)
+
+## ------------------------------------------------------------------------
 pd <- light_profile(fls, v = "sqft_living")
 pd
 plot(pd)
@@ -187,6 +200,14 @@ plot(pd)
 ## ------------------------------------------------------------------------
 pd <- light_profile(fls, v = "condition")
 plot(pd)
+
+## ------------------------------------------------------------------------
+ale <- light_profile(fls, v = "sqft_living", type = "ale")
+ale
+plot(ale)
+
+## ------------------------------------------------------------------------
+plot(light_profile(fls, v = "sqft_living", type = "ale", cut_type = "quantile"))
 
 ## ------------------------------------------------------------------------
 format_y <- function(x) format(x, big.mark = "'", scientific = FALSE)
@@ -224,6 +245,11 @@ plot(rvp, swap_dim = TRUE) +
   scale_y_continuous(labels = format_y)
 
 ## ------------------------------------------------------------------------
+rvp <- light_profile(fls, v = "sqft_living", use_linkinv = FALSE, 
+                     stats = "quartiles", pd_center = TRUE) 
+plot(rvp)
+
+## ------------------------------------------------------------------------
 eff <- light_effects(fl_lm, v = "condition") 
 p <- plot(eff) +
   scale_y_continuous(labels = format_y)
@@ -234,7 +260,7 @@ plot_counts(p, eff, alpha = 0.2)
 
 ## ------------------------------------------------------------------------
 eff <- light_effects(fl_lm, v = "condition", linkinv = I) 
-p <- plot(eff) +
+p <- plot(eff, use = "all") +
   scale_y_continuous(labels = format_y) +
   ggtitle("Effects plot on modelled log scale")
 p
@@ -275,9 +301,20 @@ plot(light_ice(fls, v = "sqft_living", seed = 4345),
   scale_color_viridis_d(begin = 0.1, end = 0.9) + 
   scale_y_continuous(labels = format_y)
 
+# c-ICE
+plot(light_ice(fls, v = "sqft_living", seed = 4345, center = TRUE), 
+     alpha = 0.8, facet_scales = "free_y") + 
+  scale_color_viridis_d(begin = 0.1, end = 0.9) + 
+  scale_y_continuous(labels = format_y)
+
 # Effects: Partial dependence
 plot(light_profile(fls, v = "sqft_living"))
 plot(light_profile(fls, v = "sqft_living"), swap_dim = TRUE)
+plot(light_profile(fls, v = "sqft_living", stats = "quartiles", pd_center = TRUE))
+
+# Effects: ALE
+plot(light_profile(fls, v = "sqft_living", type = "ale"))
+plot(light_profile(fls, v = "sqft_living", type = "ale"), swap_dim = TRUE)
 
 # Effects: Combined plot (only one flashlight) 
 # -> we need to manually pass "by" or update the single flashlight
@@ -311,9 +348,17 @@ indices <- seq(10, 150, by = 10)
 plot(light_ice(fls, v = "Petal.Width", indices = indices), alpha = 0.2)
 plot(light_ice(fls, v = "Petal.Width", by = "Species", indices = indices))
 
+# c-ICE -> lines overlap, no interactions at all
+plot(light_ice(fls, v = "Petal.Width", indices = indices, center = TRUE), alpha = 0.2)
+plot(light_ice(fls, v = "Petal.Width", by = "Species", indices = indices, center = TRUE))
+
 # Partial dependence profiles for Petal.Width
 plot(light_profile(fls, v = "Petal.Width"))
 plot(light_profile(fls, v = "Petal.Width", by = "Species"))
+
+# ALE profiles for Petal.Width
+plot(light_profile(fls, v = "Petal.Width", type = "ale"))
+plot(light_profile(fls, v = "Petal.Width", by = "Species", type = "ale"))
 
 # Observed, predicted, and partial dependence profiles
 plot(light_effects(fls, v = "Petal.Width"))
@@ -344,12 +389,18 @@ plot(light_importance(fl, v = c("Sepal.Length", "Petal.Width")), fill = "darkred
 # ICE profiles for Petal.Width
 plot(light_ice(fl, v = "Petal.Width"), alpha = 0.4)
 
+# c-ICE profiles for Petal.Width
+plot(light_ice(fl, v = "Petal.Width", center = TRUE), alpha = 0.4)
+
 # Partial dependence profiles for Petal.Width
 plot(light_profile(fl, v = "Petal.Width"))
 
+# ALE profiles for Petal.Width
+plot(light_profile(fl, v = "Petal.Width", type = "ale", cut_type = "quantile"))
+
 # Observed, predicted, and partial dependence profiles
 eff <- light_effects(fl, v = "Petal.Width")
-plot_counts(plot(eff), eff, alpha = 0.2)
+plot_counts(plot(eff, use = "all"), eff, alpha = 0.2)
 
 # Variable contribution breakdown for single observation
 plot(light_breakdown(fl, new_obs = ir[2, ], v = c("Sepal.Length", "Petal.Width")))
