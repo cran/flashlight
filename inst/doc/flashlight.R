@@ -30,7 +30,7 @@ plot(light_performance(fl), fill = "darkred")
 plot(light_performance(fl, by = "Species"), fill = "darkred")
 
 # Variable importance by increase in rmse
-imp <- light_importance(fl)
+imp <- light_importance(fl, m_repetitions = 4)
 plot(imp, fill = "darkred")
 plot(light_importance(fl, by = "Species")) +
    scale_fill_viridis_d(begin = 0.2, end = 0.8)
@@ -70,7 +70,7 @@ prep <- transform(house_prices,
                   grade = as.integer(as.character(grade)),
                   year = factor(lubridate::year(date)),
                   age = lubridate::year(date) - yr_built,
-                  zipcode = as.numeric(as.character(zipcode)),
+                  zipcode = as.factor(as.character(zipcode)),
                   waterfront = factor(waterfront, levels = c(FALSE, TRUE), labels = c("no", "yes")))
 
 x <- c("grade", "year", "age", "sqft_living", "sqft_lot", "zipcode", 
@@ -81,8 +81,7 @@ x <- c("grade", "year", "age", "sqft_living", "sqft_lot", "zipcode",
 prep_lm <- function(data) {
   data %>% 
     mutate(sqrt_living = log(sqft_living),
-           sqrt_lot = log(sqft_lot),
-           zipcode = factor(zipcode %/% 10))
+           sqrt_lot = log(sqft_lot))
 }
 
 # Data wrapper for xgboost
@@ -96,7 +95,7 @@ prep_xgb <- function(data, x) {
 ## ------------------------------------------------------------------------
 # Train / valid / test split (70% / 20% / 10%)
 set.seed(56745)
-ind <- caret::createFolds(prep[["log_price"]], k = 10, list = FALSE)
+ind <- caret::createFolds(factor(prep[["zipcode"]]), k = 10, list = FALSE)
 
 train <- prep[ind >= 4, ]
 valid <- prep[ind %in% 2:3, ]
@@ -106,14 +105,14 @@ test <- prep[ind == 1, ]
 fit_lm <- lm(update.formula(form, . ~ . + I(sqft_living^2)), data = prep_lm(train))
 
 # Random forest
-fit_rf <- ranger(form, data = train, seed = 8373)
+fit_rf <- ranger(form, data = train, respect.unordered.factors = TRUE, seed = 8373)
 cat("R-squared OOB:", fit_rf$r.squared)
 
 # Gradient boosting
 dtrain <- xgb.DMatrix(prep_xgb(train, x), label = train[["log_price"]])
 dvalid <- xgb.DMatrix(prep_xgb(valid, x), label = valid[["log_price"]])
 
-params <- list(learning_rate = 0.5,
+params <- list(learning_rate = 0.1,
                max_depth = 6,
                alpha = 1,
                lambda = 1,
@@ -122,8 +121,8 @@ params <- list(learning_rate = 0.5,
 fit_xgb <- xgb.train(params, 
                      data = dtrain,
                      watchlist = list(train = dtrain, valid = dvalid),
-                     nrounds = 200, 
-                     print_every_n = 100,
+                     nrounds = 250, 
+                     print_every_n = 50,
                      objective = "reg:linear",
                      seed = 2698)
 
@@ -166,7 +165,6 @@ perf$data %>%
 (imp <- light_importance(fls, n_max = 1000))
 plot(imp)
 
-
 ## ------------------------------------------------------------------------
 (imp <- light_importance(fls, v = x, metric = list(mse = mse)))
 plot(imp, fill = "darkred")
@@ -185,7 +183,7 @@ cp <- light_ice(fls, v = "sqft_living", n_max = 30, seed = 35)
 plot(cp, alpha = 0.2)
 
 ## ------------------------------------------------------------------------
-cp <- light_ice(fls, v = "sqft_living", n_max = 30, seed = 35, center = TRUE)
+cp <- light_ice(fls, v = "sqft_living", n_max = 30, seed = 35, center = TRUE, center_at = "middle")
 plot(cp, alpha = 0.2)
 
 ## ------------------------------------------------------------------------
@@ -272,6 +270,10 @@ p <- plot(eff, rotate_x = FALSE) +
 plot_counts(p, eff, fill = "blue", alpha = 0.2, width = 0.3)
 
 ## ------------------------------------------------------------------------
+st <- light_interaction(fls, v = x) 
+plot(st)
+
+## ------------------------------------------------------------------------
 bd <- light_breakdown(fl_lm, new_obs = valid[1, ], v = x, n_max = 1000, seed = 74) 
 plot(bd, size = 3)
 
@@ -302,7 +304,7 @@ plot(light_ice(fls, v = "sqft_living", seed = 4345),
   scale_y_continuous(labels = format_y)
 
 # c-ICE
-plot(light_ice(fls, v = "sqft_living", seed = 4345, center = TRUE), 
+plot(light_ice(fls, v = "sqft_living", seed = 4345, center = TRUE, center_at = "middle"), 
      alpha = 0.8, facet_scales = "free_y") + 
   scale_color_viridis_d(begin = 0.1, end = 0.9) + 
   scale_y_continuous(labels = format_y)
@@ -313,8 +315,8 @@ plot(light_profile(fls, v = "sqft_living"), swap_dim = TRUE)
 plot(light_profile(fls, v = "sqft_living", stats = "quartiles", pd_center = TRUE))
 
 # Effects: ALE
-plot(light_profile(fls, v = "sqft_living", type = "ale"))
-plot(light_profile(fls, v = "sqft_living", type = "ale"), swap_dim = TRUE)
+plot(light_profile(fls, v = "sqft_living", type = "ale", cut_type = "quantile"))
+plot(light_profile(fls, v = "sqft_living", type = "ale", cut_type = "quantile"), swap_dim = TRUE)
 
 # Effects: Combined plot (only one flashlight) 
 # -> we need to manually pass "by" or update the single flashlight
