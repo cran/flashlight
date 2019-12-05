@@ -4,8 +4,7 @@
 \alias{plot.light_performance}
 \title{Visualize Model Performance}
 \usage{
-\method{plot}{light_performance}(x, swap_dim = FALSE,
-  facet_scales = "free_y", rotate_x = FALSE, ...)
+\method{plot}{light_performance}(x, swap_dim = FALSE, facet_scales = "free_y", rotate_x = FALSE, ...)
 }
 \arguments{
 \item{x}{An object of class \code{light_performance}.}
@@ -33,9 +32,7 @@ fit_part <- lm(Sepal.Length ~ Petal.Length, data = iris)
 mod_full <- flashlight(model = fit_full, label = "full", data = iris, y = "Sepal.Length")
 mod_part <- flashlight(model = fit_part, label = "part", data = iris, y = "Sepal.Length")
 mods <- multiflashlight(list(mod_full, mod_part))
-plot(light_performance(mod_full), fill = "darkred")
-plot(light_performance(mod_full, by = "Species"), fill = "darkred")
-plot(light_performance(mods))
+plot(light_performance(mods), fill = "darkred")
 plot(light_performance(mods, by = "Species"))
 plot(light_performance(mods, by = "Species"), swap_dim = TRUE)
 }

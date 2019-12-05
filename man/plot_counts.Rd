@@ -4,9 +4,17 @@
 \alias{plot_counts}
 \title{Add Counts to Effects Plot}
 \usage{
-plot_counts(p, x, text_size = 3, facet_scales = "free_x",
-  show_labels = TRUE, big.mark = "'", scientific = FALSE,
-  digits = 0, ...)
+plot_counts(
+  p,
+  x,
+  text_size = 3,
+  facet_scales = "free_x",
+  show_labels = TRUE,
+  big.mark = "'",
+  scientific = FALSE,
+  digits = 0,
+  ...
+)
 }
 \arguments{
 \item{p}{The result of \code{plot.light_effects}.}
@@ -45,10 +53,6 @@ mods <- multiflashlight(list(mod_full, mod_part))
 
 x <- light_effects(mod_full, v = "Petal.Width", stats = "quartiles")
 plot_counts(plot(x), x, width = 0.3, alpha = 0.2)
-plot_counts(plot(x, zero_counts = FALSE), x, width = 0.3, alpha = 0.2)
-plot_counts(plot(x), x, width = 0.3, alpha = 0.2, show_labels = FALSE)
-plot_counts(plot(x, use = "response"), x, fill = "lightblue")
-plot_counts(plot(x, use = "pd", show.legend = FALSE), x, fill = "lightblue")
 }
 \seealso{
 \code{\link{plot.light_effects}}.

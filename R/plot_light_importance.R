@@ -11,6 +11,7 @@
 #' @param top_m Maximum number of important variables to be returned.
 #' @param swap_dim If multiflashlight and one "by" variable or single flashlight with two "by" variables, swap the role of dodge/fill variable and facet variable. If multiflashlight or one "by" variable, use facets instead of colors.
 #' @param facet_scales Scales argument passed to \code{facet_wrap}.
+#' @param rotate_x Should x axis labels be rotated by 45 degrees? Default is FALSE.
 #' @param error_bars Should error bars be added? Defaults to TRUE. Only available if \code{light_importance} was run with multiple permutations, i.e. by setting \code{m_repetitions} > 1.
 #' @param ... Further arguments passed to \code{geom_bar}.
 #' @return An object of class \code{ggplot2}.
@@ -23,14 +24,12 @@
 #' mods <- multiflashlight(list(mod_full, mod_part), by = "Species")
 #'
 #' plot(light_importance(mod_full, m_repetitions = 4), fill = "darkred")
-#' plot(light_importance(mod_full), top_m = 2)
-#' plot(light_importance(mods))
 #' plot(light_importance(mods), swap_dim = TRUE)
 #' plot(light_importance(mods, by = NULL), fill = "darkgreen")
-#' plot(light_importance(mods, by = NULL), swap_dim = TRUE)
 #' @seealso \code{\link{light_importance}}.
 plot.light_importance <- function(x, top_m = Inf, swap_dim = FALSE,
-                                  facet_scales = "fixed", error_bars = TRUE, ...) {
+                                  facet_scales = "fixed", rotate_x = FALSE,
+                                  error_bars = TRUE, ...) {
   data <- x$data
   nby <- length(x$by)
   multi <- is.light_importance_multi(x)
@@ -88,6 +87,10 @@ plot.light_importance <- function(x, top_m = Inf, swap_dim = FALSE,
                              width = 0, color = "black", position = position_dodge(0.9))
     }
   }
+  if (rotate_x) {
+    p <- p + theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1))
+  }
+  p
   p + coord_flip()
 }
 

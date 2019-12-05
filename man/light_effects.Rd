@@ -11,17 +11,41 @@ light_effects(x, ...)
 
 \method{light_effects}{default}(x, ...)
 
-\method{light_effects}{flashlight}(x, v, data = NULL, by = x$by,
-  stats = c("mean", "quartiles"), breaks = NULL, n_bins = 11,
-  cut_type = c("equal", "quantile"), use_linkinv = TRUE,
-  value_name = "value", q1_name = "q1", q3_name = "q3",
-  label_name = "label", type_name = "type", counts_name = "counts",
-  counts_weighted = FALSE, v_labels = TRUE, pred = NULL,
-  pd_indices = NULL, pd_n_max = 1000, pd_seed = NULL,
-  ale_two_sided = TRUE, ...)
+\method{light_effects}{flashlight}(
+  x,
+  v,
+  data = NULL,
+  by = x$by,
+  stats = c("mean", "quartiles"),
+  breaks = NULL,
+  n_bins = 11,
+  cut_type = c("equal", "quantile"),
+  use_linkinv = TRUE,
+  value_name = "value",
+  q1_name = "q1",
+  q3_name = "q3",
+  label_name = "label",
+  type_name = "type",
+  counts_name = "counts",
+  counts_weighted = FALSE,
+  v_labels = TRUE,
+  pred = NULL,
+  pd_indices = NULL,
+  pd_n_max = 1000,
+  pd_seed = NULL,
+  ale_two_sided = TRUE,
+  ...
+)
 
-\method{light_effects}{multiflashlight}(x, v, data = NULL,
-  breaks = NULL, n_bins = 11, cut_type = c("equal", "quantile"), ...)
+\method{light_effects}{multiflashlight}(
+  x,
+  v,
+  data = NULL,
+  breaks = NULL,
+  n_bins = 11,
+  cut_type = c("equal", "quantile"),
+  ...
+)
 }
 \arguments{
 \item{x}{An object of class \code{flashlight} or \code{multiflashlight}.}
@@ -104,26 +128,10 @@ Note that ALE profiles are being calibrated by (weighted) average predictions. T
 
 \examples{
 fit_full <- lm(Sepal.Length ~ ., data = iris)
-fit_part <- lm(Sepal.Length ~ Petal.Length, data = iris)
 mod_full <- flashlight(model = fit_full, label = "full", data = iris, y = "Sepal.Length")
-mod_part <- flashlight(model = fit_part, label = "part", data = iris, y = "Sepal.Length")
-mods <- multiflashlight(list(mod_full, mod_part))
 
 light_effects(mod_full, v = "Species")
 light_effects(mod_full, v = "Species", stats = "quartiles")
-
-light_effects(mod_full, v = "Petal.Width")
-light_effects(mod_full, v = "Petal.Width", v_label = FALSE)
-light_effects(mod_full, v = "Petal.Width", stats = "quartiles")
-light_effects(mod_full, v = "Petal.Width", n_bins = 3)
-light_effects(mod_full, v = "Petal.Width", n_bins = 3, format = "f")
-light_effects(mod_full, v = "Petal.Width", breaks = 0:3)
-
-light_effects(mod_full, v = "Petal.Width", by = "Species")
-
-light_effects(mods, v = "Petal.Width")
-light_effects(mods, v = "Petal.Width", by = "Species")
-light_effects(mods, v = "Petal.Width", by = "Species", stats = "quartiles")
 }
 \seealso{
 \code{\link{light_profile}}, \code{\link{plot.light_effects}}.

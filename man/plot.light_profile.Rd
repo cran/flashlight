@@ -4,9 +4,13 @@
 \alias{plot.light_profile}
 \title{Visualize Profiles, e.g. of Partial Dependence}
 \usage{
-\method{plot}{light_profile}(x, swap_dim = FALSE,
-  facet_scales = "free_x", rotate_x = x$type != "partial dependence",
-  ...)
+\method{plot}{light_profile}(
+  x,
+  swap_dim = FALSE,
+  facet_scales = "free_x",
+  rotate_x = x$type != "partial dependence",
+  ...
+)
 }
 \arguments{
 \item{x}{An object of class \code{light_profile}.}
@@ -36,28 +40,9 @@ mod_part <- flashlight(model = fit_part, label = "part", data = iris, y = "Sepal
 mods <- multiflashlight(list(mod_full, mod_part))
 
 plot(light_profile(mod_full, v = "Species"))
-plot(light_profile(mod_full, v = "Species", type = "ale"))
-plot(light_profile(mod_full, v = "Species", type = "response"))
 plot(light_profile(mod_full, v = "Species", type = "residual", stats = "quartiles"))
-
-plot(light_profile(mod_full, v = "Petal.Width"))
-plot(light_profile(mod_full, v = "Petal.Width", type = "residual"))
-plot(light_profile(mod_full, v = "Petal.Width", stats = "quartiles"))
-
 plot(light_profile(mod_full, v = "Petal.Width", by = "Species"))
-plot(light_profile(mod_full, v = "Petal.Width", by = "Species"), swap_dim = TRUE)
-
-plot(light_profile(mods, v = "Species"))
-plot(light_profile(mods, v = "Petal.Width"))
-plot(light_profile(mods, v = "Petal.Width"), swap_dim = TRUE)
 plot(light_profile(mods, v = "Petal.Width", by = "Species"))
-plot(light_profile(mods, v = "Petal.Width", by = "Species", type = "ale"))
-plot(light_profile(mods, v = "Petal.Width", by = "Species"), swap_dim = TRUE)
-plot(light_profile(mods, v = "Petal.Width", by = "Species", type = "predicted"))
-plot(light_profile(mods, v = "Petal.Width", by = "Species",
-  type = "predicted", n_bins = 5), swap_dim = TRUE)
-plot(light_profile(mods, v = "Petal.Width", by = "Species",
-  type = "predicted", stats = "quartiles"), rotate_x = TRUE)
 }
 \seealso{
 \code{\link{light_profile}}, \code{\link{plot.light_effects}}.

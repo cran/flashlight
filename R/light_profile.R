@@ -29,8 +29,7 @@
 #' @param pd_indices A vector of row numbers to consider in calculating partial dependence profiles. Only used for type = "partial dependence" and "ale".
 #' @param pd_n_max Maximum number of ICE profiles to calculate (will be randomly picked from \code{data}). Only used for type = "partial dependence" and "ale".
 #' @param pd_seed Integer random seed used to select ICE profiles. Only used for type = "partial dependence" and "ale".
-#' @param pd_center Should ICE curves be centered within \code{by} subsets before caclulating partial dependence profiles? This option is interesting together with \code{stats = "quartiles"} in order to visualize interaction strength.
-#' @param pd_center_at If \code{pd_center = TRUE}: Which evaluation point to center ICE curves at before calculating partial dependence profiles? One of "first", "middle", or "last".
+#' @param pd_center How should ICE curves be centered? Default is "no". Choose "first", "middle", or "last" to 0-center at specific evaluation points. Choose "mean" to center all profiles at the within-group means. Choose "0" to mean-center curves at 0. Only relevant for partial dependence.
 #' @param ale_two_sided If \code{TRUE}, \code{v} is continuous and \code{breaks} are passed or being calculated, then two-sided derivatives are calculated for ALE instead of left derivatives. More specifically: Usually, local effects at value x are calculated using points between x-e and x. Set \code{ale_two_sided = TRUE} to use points between x-e/2 and x+e/2.
 #' @param ... Further arguments passed to \code{cut3} resp. \code{formatC} in forming the cut breaks of the \code{v} variable. Not relevant for partial dependence and ALE profiles.
 #' @return An object of classes \code{light_profile}, \code{light} (and a list) with the following elements.
@@ -54,37 +53,12 @@
 #'
 #' @examples
 #' fit_full <- lm(Sepal.Length ~ ., data = iris)
-#' fit_part <- lm(Sepal.Length ~ Petal.Length, data = iris)
 #' mod_full <- flashlight(model = fit_full, label = "full", data = iris, y = "Sepal.Length")
-#' mod_part <- flashlight(model = fit_part, label = "part", data = iris, y = "Sepal.Length")
-#' mods <- multiflashlight(list(mod_full, mod_part))
-#'
 #' light_profile(mod_full, v = "Species")
-#' light_profile(mod_full, v = "Species", counts = FALSE)
 #' light_profile(mod_full, v = "Species", type = "response")
-#' light_profile(mod_full, v = "Species", type = "ale")
 #' light_profile(mod_full, v = "Species", stats = "quartiles")
-#'
-#' light_profile(mod_full, v = "Petal.Width")
 #' light_profile(mod_full, v = "Petal.Width", type = "residual")
-#' light_profile(mod_full, v = "Petal.Width", type = "residual", v_label = FALSE)
-#' light_profile(mod_full, v = "Petal.Width", type = "residual", dig.lab = 1)
-#' light_profile(mod_full, v = "Petal.Width", stats = "quartiles")
-#' light_profile(mod_full, v = "Petal.Width", n_bins = 3)
 #' light_profile(mod_full, v = "Petal.Width", pd_evaluate_at = 2:4)
-#' light_profile(mod_full, pd_grid = data.frame(Petal.Width = 2:4))
-#'
-#' light_profile(mod_full, v = "Petal.Width", by = "Species")
-#'
-#' light_profile(mods, v = "Petal.Width")
-#' light_profile(mods, v = "Petal.Width", by = "Species")
-#' light_profile(mods, v = "Petal.Width", by = "Species", type = "predicted")
-#' light_profile(mods, v = "Petal.Width", by = "Species",
-#'   type = "predicted", stats = "quartiles")
-#'
-#' light_profile(mods, v = "Petal.Width", by = "Species", stats = "quartiles",
-#'   value_name = "pd", q1_name = "p25", q3_name = "p75", label_name = "model",
-#'   type_name = "visualization", counts_name = "n")
 #' @seealso \code{\link{light_effects}}, \code{\link{plot.light_profile}}.
 light_profile <- function(x, ...) {
   UseMethod("light_profile")
@@ -109,14 +83,13 @@ light_profile.flashlight <- function(x, v = NULL, data = NULL, by = x$by,
                                      counts_name = "counts", counts = TRUE,
                                      counts_weighted = FALSE, v_labels = TRUE,
                                      pred = NULL, pd_evaluate_at = NULL, pd_grid = NULL,
-                                     pd_indices = NULL, pd_n_max = 1000,
-                                     pd_seed = NULL, pd_center = FALSE,
-                                     pd_center_at = c("first", "middle", "last"),
+                                     pd_indices = NULL, pd_n_max = 1000, pd_seed = NULL,
+                                     pd_center = c("no", "first", "middle", "last", "mean", "0"),
                                      ale_two_sided = FALSE, ...) {
   type <- match.arg(type)
   stats <- match.arg(stats)
   cut_type <- match.arg(cut_type)
-  pd_center_at <- match.arg(pd_center_at)
+  pd_center <- match.arg(pd_center)
 
   if (type == "ale" && stats == "quartiles") {
     stop("The cumsum step of ALE does not make sense for quartiles.")
@@ -146,7 +119,6 @@ light_profile.flashlight <- function(x, v = NULL, data = NULL, by = x$by,
                              n_bins = n_bins, cut_type = cut_type,
                              indices = pd_indices, n_max = pd_n_max,
                              seed = pd_seed, center = pd_center,
-                             center_at = pd_center_at,
                              value_name = value_name,
                              label_name = label_name, id_name = "id_xxx")
     v <- cp_profiles$v
