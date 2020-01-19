@@ -7,12 +7,13 @@
 #' @importFrom dplyr semi_join bind_rows
 #' @method plot light_effects
 #' @param x An object of class \code{light_effects}.
-#' @param use A vector of elements to show. Any subset of ("response", "predicted", "pd" and "ale") or "all". Defaults to all except "ale"
+#' @param use A vector of elements to show. Any subset of ("response", "predicted", "pd", "ale") or "all". Defaults to all except "ale"
 #' @param zero_counts Logical flag if 0 count levels should be shown on the x axis.
 #' @param size_factor Factor used to enlarge default \code{size} in \code{geom_point} and \code{geom_line}.
 #' @param facet_scales Scales argument passed to \code{facet_wrap}.
 #' @param facet_nrow Number of rows in \code{facet_wrap}. Must be 1 if \code{plot_counts} should be used.
 #' @param rotate_x Should x axis labels be rotated by 45 degrees?
+#' @param show_points Should points be added to the line (default is \code{TRUE}).
 #' @param ... Further arguments passed to geoms.
 #' @return An object of class \code{ggplot2}.
 #' @export
@@ -29,7 +30,8 @@
 plot.light_effects <- function(x, use = c("response", "predicted", "pd"),
                                zero_counts = TRUE, size_factor = 1,
                                facet_scales = "free_x",
-                               facet_nrow = 1L, rotate_x = TRUE, ...) {
+                               facet_nrow = 1L, rotate_x = TRUE,
+                               show_points = TRUE, ...) {
   # Checks
   stopifnot(length(use) >= 1L)
   if ("all" %in% use) {
@@ -61,8 +63,10 @@ plot.light_effects <- function(x, use = c("response", "predicted", "pd"),
   if (n) {
     tp <- x$type_name
     p <- ggplot(data, aes_string(y = x$value_name, x = x$v)) +
-      geom_point(aes_string(color = tp, group = tp), size = size_factor, ...) +
       geom_line(aes_string(color = tp, group = tp), size = size_factor / 3, ...)
+    if (show_points) {
+      p <- p + geom_point(aes_string(color = tp, group = tp), size = size_factor, ...)
+    }
     if (crossbar_required) {
       p <- p + crossbar
     }

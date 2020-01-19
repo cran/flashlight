@@ -5,7 +5,7 @@
 #' The breakdown algorithm works as follows: First, the visit order (x_1, ..., x_m) of the variables \code{v} is specified. Then, in the query \code{data}, the column x_1 is set to the value of x_1 of the single observation \code{new_obs} to be explained. The change in the (weighted) average prediction on \code{data} measures the contribution of x_1 on the prediction of \code{new_obs}. This procedure is iterated over all x_i until eventually, all rows in \code{data} are identical to \code{new_obs}.
 #' A complication with this approach is that the visit order is relevant, at least for non-additive models. Ideally, the algorithm could be repeated for all possible permutations of \code{v} and its results averaged per variable. This is basically what SHAP values do, see [1] for an explanation. Unfortunately, there is no efficient way to do this in a model agnostic way. We offer two visit strategies to approximate SHAP. The first one uses
 #' the short-cut described in [1]: The variables are sorted by the size of their contribution in the same way as the breakdown algorithm but without iteration, i.e. starting from the original query data for each variable $x_i$. We call this visit strategy "importance". The second strategy "permutation" averages contributions from a small number of random permutations of v.
-#' Note that the minimum required elements in the (multi-) flashlight are "y", "predict_function", "model", and "data". The latter can also directly be passed to \code{light_breakdown}. Note that by default, no retransformation function is applied.
+#' Note that the minimum required elements in the (multi-) flashlight are a "predict_function", "model", and "data". The latter can also directly be passed to \code{light_breakdown}. Note that by default, no retransformation function is applied.
 #'
 #' @importFrom dplyr semi_join lag tibble
 #' @importFrom MetricsWeighted weighted_mean
@@ -90,13 +90,8 @@ light_breakdown.flashlight <- function(x, new_obs, data = x$data, by = x$by,
   # Update flashlight with info on linkinv
   x <- flashlight(x, linkinv = if (use_linkinv) x$linkinv else function(z) z)
 
-  # Helper function
-  mean_pred <- function(x, data, w = if (!is.null(x$w)) data[[x$w]]) {
-    weighted_mean(predict(x, data = data), w = w, na.rm = TRUE)
-  }
-
   # Baseline prediction and target prediction
-  baseline <- mean_pred(x, data = data)
+  baseline <- .mean_pred(x, data = data)
   prediction <- unname(predict(x, data = new_obs))
 
   # Determine v
@@ -110,7 +105,7 @@ light_breakdown.flashlight <- function(x, new_obs, data = x$data, by = x$by,
   if (visit_strategy == "importance") {
     ind_impact <- vapply(v, function(vi) {
       data[[vi]] <- new_obs[[vi]];
-      (mean_pred(x = x, data = data) - baseline)^2
+      (.mean_pred(x = x, data = data) - baseline)^2
     }, FUN.VALUE = numeric(1))
     v <- names(sort(-ind_impact))
   }
@@ -121,7 +116,7 @@ light_breakdown.flashlight <- function(x, new_obs, data = x$data, by = x$by,
     vv <- if (perm) sample(v) else v
     for (i in 1:m) {
       X[[vv[i]]] <- new_obs[[vv[i]]]
-      out[i] <- mean_pred(x, data = X)
+      out[i] <- .mean_pred(x, data = X)
     }
     if (perm) cumsum(c(baseline, diff(c(baseline, out))[match(v, vv)]))[-1] else out
   }
@@ -140,18 +135,19 @@ light_breakdown.flashlight <- function(x, new_obs, data = x$data, by = x$by,
   out[[label_name]] <- x$label
 
   if (description) {
-    # Add description text
-    pretty_num <- function(z) {
+    # Helper function
+    .pretty_num <- function(z) {
       if (is.numeric(z)) {
         return(prettyNum(z, preserve.width = "individual", digits = digits, ...))
       }
       as.character(z)
     }
-    formatted_input <- vapply(new_obs[, v, drop = FALSE], pretty_num, character(1))
+    # Add description text
+    formatted_input <- vapply(new_obs[, v, drop = FALSE], .pretty_num, FUN.VALUE = character(1))
     formatted_input <- c("average in data", paste(v, formatted_input, sep = " = "), "prediction")
     formatted_impact <- out[[after_name]] - ifelse(out[[step_name]] > 0, out[[before_name]], 0)
     plus_sign <- formatted_impact >= 0 & out[[step_name]] > 0
-    formatted_impact <- paste0(ifelse(plus_sign, "+", ""), pretty_num(formatted_impact))
+    formatted_impact <- paste0(ifelse(plus_sign, "+", ""), .pretty_num(formatted_impact))
     out[[description_name]] <- paste(formatted_input, formatted_impact, sep = ": ")
   } else {
     out[[description_name]] <- ""
@@ -176,4 +172,9 @@ light_breakdown.flashlight <- function(x, new_obs, data = x$data, by = x$by,
 light_breakdown.multiflashlight <- function(x, ...) {
   light_combine(lapply(x, light_breakdown, ...),
                 new_class = "light_breakdown_multi")
+}
+
+# Helper function
+.mean_pred <- function(x, data, w = if (!is.null(x$w)) data[[x$w]]) {
+  weighted_mean(predict(x, data = data), w = w, na.rm = TRUE)
 }

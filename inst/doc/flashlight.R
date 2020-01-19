@@ -54,8 +54,11 @@ plot(light_profile(fl, v = "Petal.Width", type = "response", stats = "quartiles"
 plot(light_profile(fl, v = "Petal.Width", type = "predicted"))
 plot(light_profile(fl, v = "Petal.Width", type = "residual", stats = "quartiles"))
 
-# Response profiles, prediction profiles, partial depencence, and ALE profiles in one
+# Response profiles, prediction profiles, partial dependence, and ALE profiles in one
 plot(light_effects(fl, v = "Petal.Width"), use = "all")
+
+# Scatter plots
+plot(light_scatter(fl, v = "Petal.Width", type = "predicted"))
 
 # Variable contribution breakdown for single observation
 plot(light_breakdown(fl, new_obs = iris[2, ]))
@@ -65,7 +68,7 @@ plot(light_breakdown(fl, new_obs = iris[2, ]))
 head(house_prices)
 
 ## -----------------------------------------------------------------------------
-prep <- transform(house_prices, 
+prep <- transform(house_prices,
                   log_price = log(price),
                   grade = as.integer(as.character(grade)),
                   year = factor(lubridate::year(date)),
@@ -73,22 +76,22 @@ prep <- transform(house_prices,
                   zipcode = as.factor(as.character(zipcode)),
                   waterfront = factor(waterfront, levels = c(FALSE, TRUE), labels = c("no", "yes")))
 
-x <- c("grade", "year", "age", "sqft_living", "sqft_lot", "zipcode", 
+x <- c("grade", "year", "age", "sqft_living", "sqft_lot", "zipcode",
        "condition", "waterfront")
 
 ## -----------------------------------------------------------------------------
 # Data wrapper for the linear model
 prep_lm <- function(data) {
-  data %>% 
+  data %>%
     mutate(sqrt_living = log(sqft_living),
            sqrt_lot = log(sqft_lot))
 }
 
 # Data wrapper for xgboost
 prep_xgb <- function(data, x) {
-  data %>% 
-    select_at(x) %>% 
-    mutate_if(Negate(is.numeric), as.integer) %>% 
+  data %>%
+    select_at(x) %>%
+    mutate_if(Negate(is.numeric), as.integer) %>%
     data.matrix()
 }
 
@@ -118,18 +121,18 @@ params <- list(learning_rate = 0.1,
                lambda = 1,
                colsample_bytree = 0.8)
 
-fit_xgb <- xgb.train(params, 
+fit_xgb <- xgb.train(params,
                      data = dtrain,
                      watchlist = list(train = dtrain, valid = dvalid),
-                     nrounds = 250, 
+                     nrounds = 250,
                      print_every_n = 50,
                      objective = "reg:linear",
                      seed = 2698)
 
 ## -----------------------------------------------------------------------------
-fl_mean <- flashlight(model = mean(train$log_price), label = "mean", 
+fl_mean <- flashlight(model = mean(train$log_price), label = "mean",
                       predict_function = function(mod, X) rep(mod, nrow(X)))
-fl_lm <- flashlight(model = fit_lm, label = "lm", 
+fl_lm <- flashlight(model = fit_lm, label = "lm",
                     predict_function = function(mod, X) predict(mod, prep_lm(X)))
 fl_rf <- flashlight(model = fit_rf, label = "rf",
                     predict_function = function(mod, X) predict(mod, X)$predictions)
@@ -138,7 +141,7 @@ fl_xgb <- flashlight(model = fit_xgb, label = "xgb",
 print(fl_xgb)
 
 ## -----------------------------------------------------------------------------
-fls <- multiflashlight(list(fl_mean, fl_lm, fl_rf, fl_xgb), y = "log_price", linkinv = exp, 
+fls <- multiflashlight(list(fl_mean, fl_lm, fl_rf, fl_xgb), y = "log_price", linkinv = exp,
                        data = valid, metrics = list(rmse = rmse, `R-squared` = r_squared))
 
 ## -----------------------------------------------------------------------------
@@ -156,17 +159,13 @@ plot(perf, fill = "darkred") +
 ## -----------------------------------------------------------------------------
 head(perf$data)
 
-perf$data %>% 
+perf$data %>%
   ggplot(aes(x = label, y = value, group = metric, color = metric)) +
   geom_point() +
   scale_color_viridis_d(begin = 0.2, end = 0.6)
 
 ## -----------------------------------------------------------------------------
-(imp <- light_importance(fls, n_max = 1000))
-plot(imp)
-
-## -----------------------------------------------------------------------------
-(imp <- light_importance(fls, v = x, metric = list(mse = mse)))
+(imp <- light_importance(fls, v = x))
 plot(imp, fill = "darkred")
 
 ## -----------------------------------------------------------------------------
@@ -206,20 +205,20 @@ plot(pvp) +
   scale_y_continuous(labels = format_y)
 
 ## -----------------------------------------------------------------------------
-rvp <- light_profile(fl_lm, v = "sqft_living", type = "response", format = "fg") 
+rvp <- light_profile(fl_lm, v = "sqft_living", type = "response", format = "fg")
 plot(rvp) +
   scale_y_continuous(labels = format_y)
 
 ## -----------------------------------------------------------------------------
-rvp <- light_profile(fl_lm, v = "sqft_living", type = "response", 
-                     stats = "quartiles", format = "fg") 
+rvp <- light_profile(fl_lm, v = "sqft_living", type = "response",
+                     stats = "quartiles", format = "fg")
 plot(rvp) +
   scale_y_continuous(labels = format_y)
 
 ## -----------------------------------------------------------------------------
 fls$mean <- NULL
-rvp <- light_profile(fls, v = "sqft_living", type = "residual", 
-                     stats = "quartiles", format = "fg") 
+rvp <- light_profile(fls, v = "sqft_living", type = "residual",
+                     stats = "quartiles", format = "fg")
 plot(rvp) +
   scale_y_continuous(labels = format_y)
 
@@ -228,18 +227,18 @@ plot(rvp, swap_dim = TRUE) +
   scale_y_continuous(labels = format_y)
 
 ## -----------------------------------------------------------------------------
-rvp <- light_profile(fls, v = "sqft_living", type = "residual", 
-                     stats = "quartiles", format = "fg", n_bins = 5) 
+rvp <- light_profile(fls, v = "sqft_living", type = "residual",
+                     stats = "quartiles", format = "fg", n_bins = 5)
 plot(rvp, swap_dim = TRUE) +
   scale_y_continuous(labels = format_y)
 
 ## -----------------------------------------------------------------------------
-rvp <- light_profile(fls, v = "sqft_living", use_linkinv = FALSE, 
-                     stats = "quartiles", pd_center = "mean") 
+rvp <- light_profile(fls, v = "sqft_living", use_linkinv = FALSE,
+                     stats = "quartiles", pd_center = "mean")
 plot(rvp)
 
 ## -----------------------------------------------------------------------------
-eff <- light_effects(fl_lm, v = "condition") 
+eff <- light_effects(fl_lm, v = "condition")
 p <- plot(eff) +
   scale_y_continuous(labels = format_y)
 p
@@ -248,56 +247,67 @@ p
 plot_counts(p, eff, alpha = 0.2)
 
 ## -----------------------------------------------------------------------------
-eff <- light_effects(fl_lm, v = "condition", linkinv = I) 
+eff <- light_effects(fl_lm, v = "condition", linkinv = I)
 p <- plot(eff, use = "all") +
   scale_y_continuous(labels = format_y) +
   ggtitle("Effects plot on modelled log scale")
 p
 
 ## -----------------------------------------------------------------------------
-eff <- light_effects(fl_lm, v = "condition", stats = "quartiles") 
+eff <- light_effects(fl_lm, v = "condition", stats = "quartiles")
 p <- plot(eff, rotate_x = FALSE) +
    scale_y_continuous(labels = format_y)
 plot_counts(p, eff, fill = "blue", alpha = 0.2, width = 0.3)
 
 ## -----------------------------------------------------------------------------
-st <- light_interaction(fls, v = x) 
+eff <- light_effects(fls, v = "sqft_living", v_labels = FALSE, 
+                     cut_type = "quantile", n_bins = 25)
+plot(eff, use = c("pd", "ale"), show_points = FALSE) + 
+  scale_y_continuous(labels = format_y) +
+  coord_cartesian(xlim = c(1000, 4000), ylim = c(3e5, 9e5))
+
+## -----------------------------------------------------------------------------
+pr <- light_scatter(fls, v = "sqft_living", n_max = 300)
+plot(pr, alpha = 0.2)
+
+## -----------------------------------------------------------------------------
+st <- light_interaction(fls, v = x)
 plot(st)
 
 ## -----------------------------------------------------------------------------
-st_pair <- light_interaction(fls, v = most_important(st, 4), pairwise = TRUE) 
+st_pair <- light_interaction(fls, v = most_important(st, 4), pairwise = TRUE)
 plot(st_pair)
 
 ## -----------------------------------------------------------------------------
-bd <- light_breakdown(fl_lm, new_obs = valid[1, ], v = x, n_max = 1000, seed = 74) 
+bd <- light_breakdown(fl_lm, new_obs = valid[1, ], v = x, n_max = 1000, seed = 74)
 plot(bd, size = 3)
 
 ## -----------------------------------------------------------------------------
 fls <- multiflashlight(fls, by = "year")
 
 # Performance
-plot(light_performance(fls)) + 
+plot(light_performance(fls)) +
   scale_fill_viridis_d(begin = 0.1, end = 0.9)
 
 # With swapped dimension
-plot(light_performance(fls), swap_dim = TRUE) + 
+plot(light_performance(fls), swap_dim = TRUE) +
   scale_fill_viridis_d(begin = 0.1, end = 0.9)
-  
+
 # Importance
 imp <- light_importance(fls, v = x)
 plot(imp, top_m = 4)
 plot(imp, swap_dim = TRUE)
 
 # Effects: ICE
-plot(light_ice(fls, v = "sqft_living", seed = 4345), 
-     alpha = 0.8, facet_scales = "free_y") + 
-  scale_color_viridis_d(begin = 0.1, end = 0.9) + 
+plot(light_ice(fls, v = "sqft_living", seed = 4345),
+     alpha = 0.8, facet_scales = "free_y") +
+  scale_color_viridis_d(begin = 0.1, end = 0.9) +
   scale_y_continuous(labels = format_y)
 
 # c-ICE
-plot(light_ice(fls, v = "sqft_living", seed = 4345, center = "middle"), 
-     alpha = 0.8, facet_scales = "free_y") + 
-  scale_color_viridis_d(begin = 0.1, end = 0.9) + 
+plot(light_ice(fls, v = "sqft_living", seed = 4345, center = "middle"),
+     alpha = 0.8, facet_scales = "free_y") +
+  scale_color_viridis_d(begin = 0.1, end = 0.9) +
   scale_y_continuous(labels = format_y)
 
 # Effects: Partial dependence
@@ -309,14 +319,18 @@ plot(light_profile(fls, v = "sqft_living", stats = "quartiles", center = "mean")
 plot(light_profile(fls, v = "sqft_living", type = "ale", cut_type = "quantile"))
 plot(light_profile(fls, v = "sqft_living", type = "ale", cut_type = "quantile"), swap_dim = TRUE)
 
-# Effects: Combined plot (only one flashlight) 
+# Effects: Combined plot (only one flashlight)
 # -> we need to manually pass "by" or update the single flashlight
-z <- light_effects(fls, v = "sqft_living", format = "fg", 
+z <- light_effects(fls, v = "sqft_living", format = "fg",
                    stats = "quartiles", n_bins = 5, by = NULL)
-p <- plot(z) + 
+p <- plot(z) +
   scale_y_continuous(labels = format_y) +
   coord_cartesian(ylim = c(0, 3e6))
 plot_counts(p, z, alpha = 0.2)
+
+# Scatter
+pr <- light_scatter(fls, v = "sqft_living", n_max = 300)
+plot(pr, alpha = 0.8)
 
 # Variable contribution breakdown for single observation (on log-scale)
 # -> "by" selects the relevant rows in data/valid
@@ -335,7 +349,7 @@ plot(light_performance(fls, by = "Species"))
 # Variable importance by drop in rmse
 plot(light_importance(fls, by = "Species"))
 
-# ICE profiles for Petal.Width 
+# ICE profiles for Petal.Width
 # (not affected by weights because nothing is being aggregated)
 indices <- seq(10, 150, by = 10)
 plot(light_ice(fls, v = "Petal.Width", indices = indices), alpha = 0.2)
@@ -356,7 +370,7 @@ plot(light_profile(fls, v = "Petal.Width", by = "Species", type = "ale"))
 # Observed, predicted, and partial dependence profiles
 plot(light_effects(fls, v = "Petal.Width"))
 eff <- light_effects(fls, v = "Petal.Width", stats = "quartiles")
-plot(eff) %>% 
+plot(eff) %>%
   plot_counts(eff, alpha = 0.2, fill = "blue")
 
 # Variable contribution breakdown for single observation (on log-scale)
@@ -370,7 +384,7 @@ fit <- glm(virginica ~ Sepal.Length + Petal.Width, data = ir, family = binomial)
 
 # Make flashlight
 fl <- flashlight(model = fit, data = ir, y = "virginica", label = "lr",
-                 metrics = list(logLoss = logLoss, AUC = AUC), 
+                 metrics = list(logLoss = logLoss, AUC = AUC),
                  predict_function = function(m, d) predict(m, d, type = "response"))
 
 # Performance: rmse and R-squared

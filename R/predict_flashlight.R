@@ -15,8 +15,10 @@
 #' predict(fl, data = iris[1:5, ])
 #' predict(fl, data = iris[1:5, ], linkinv = exp)
 predict.flashlight <- function(object, ...) {
-  object <- flashlight(object, ...)
-  required <- c("predict_function", "linkinv", "model", "data")
-  stopifnot(sapply(with(object, required), Negate(is.null)))
+  object <- flashlight(object, check = FALSE, ...)
+  if (any(vapply(object[c("predict_function", "linkinv", "model", "data")],
+                 is.null, FUN.VALUE = TRUE))) {
+    stop("Not enough info to predict.")
+  }
   with(object, linkinv(predict_function(model, data)))
 }

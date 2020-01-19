@@ -12,13 +12,14 @@
   facet_scales = "free_x",
   facet_nrow = 1L,
   rotate_x = TRUE,
+  show_points = TRUE,
   ...
 )
 }
 \arguments{
 \item{x}{An object of class \code{light_effects}.}
 
-\item{use}{A vector of elements to show. Any subset of ("response", "predicted", "pd" and "ale") or "all". Defaults to all except "ale"}
+\item{use}{A vector of elements to show. Any subset of ("response", "predicted", "pd", "ale") or "all". Defaults to all except "ale"}
 
 \item{zero_counts}{Logical flag if 0 count levels should be shown on the x axis.}
 
@@ -29,6 +30,8 @@
 \item{facet_nrow}{Number of rows in \code{facet_wrap}. Must be 1 if \code{plot_counts} should be used.}
 
 \item{rotate_x}{Should x axis labels be rotated by 45 degrees?}
+
+\item{show_points}{Should points be added to the line (default is \code{TRUE}).}
 
 \item{...}{Further arguments passed to geoms.}
 }
