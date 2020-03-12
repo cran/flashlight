@@ -63,6 +63,9 @@ plot(light_scatter(fl, v = "Petal.Width", type = "predicted"))
 # Variable contribution breakdown for single observation
 plot(light_breakdown(fl, new_obs = iris[2, ]))
 
+# Global surrogate
+plot(light_global_surrogate(fl))
+
 
 ## -----------------------------------------------------------------------------
 head(house_prices)
@@ -283,6 +286,11 @@ bd <- light_breakdown(fl_lm, new_obs = valid[1, ], v = x, n_max = 1000, seed = 7
 plot(bd, size = 3)
 
 ## -----------------------------------------------------------------------------
+surr <- light_global_surrogate(fls$xgb, v = x)
+print(surr$data$r_squared)
+plot(surr)
+
+## -----------------------------------------------------------------------------
 fls <- multiflashlight(fls, by = "year")
 
 # Performance
@@ -336,6 +344,8 @@ plot(pr, alpha = 0.8)
 # -> "by" selects the relevant rows in data/valid
 plot(light_breakdown(fl_lm, new_obs = valid[1, ], v = x, top_m = 3))
 
+# Global surrogate
+plot(light_global_surrogate(fls$xgb, v = x, maxdepth = 3))
 
 ## -----------------------------------------------------------------------------
 # Add weight info to the flashlight
@@ -375,6 +385,9 @@ plot(eff) %>%
 
 # Variable contribution breakdown for single observation (on log-scale)
 plot(light_breakdown(fls, new_obs = iris[2, ]), size = 2.5)
+
+# Global surrogate
+plot(light_global_surrogate(fls))
 
 ## -----------------------------------------------------------------------------
 ir <- iris
