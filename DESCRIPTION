@@ -1,8 +1,8 @@
 Type: Package
 Package: flashlight
 Title: Shed Light on Black Box Machine Learning Models
-Version: 0.7.0
-Date: 2020-03-12
+Version: 0.7.1
+Date: 2020-03-20
 Authors@R: 
     person(given = "Michael",
            family = "Mayer",
@@ -29,9 +29,9 @@ LazyData: true
 Imports: stats, utils, dplyr, tidyr, rlang, rpart, rpart.plot, ggplot2,
         ggpubr, MetricsWeighted (>= 0.3.0)
 Suggests: knitr, lubridate, ranger, xgboost, caret, moderndive
-RoxygenNote: 7.0.2
+RoxygenNote: 7.1.0
 NeedsCompilation: no
-Packaged: 2020-03-12 10:05:49 UTC; Michael
+Packaged: 2020-03-20 15:01:14 UTC; Michael
 Author: Michael Mayer [aut, cre, cph]
 Repository: CRAN
-Date/Publication: 2020-03-12 11:10:02 UTC
+Date/Publication: 2020-03-20 15:50:06 UTC

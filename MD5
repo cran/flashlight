@@ -1,6 +1,6 @@
-6b96e21cf16859830bf7ca1699830a04 *DESCRIPTION
-80ce68b2644ae3b0b64aea51452836b9 *NAMESPACE
-3b4564b89a0fa4b164f252e652649988 *NEWS.md
+1d80f1dce75179ce1e69e0a4d935e285 *DESCRIPTION
+a0b5c973b7e8a08bf643096b657eef4b *NAMESPACE
+62ab377a77e2914551082e4618ce2d90 *NEWS.md
 6d397eab59a091dcfd4db2b736fc9616 *R/add_shap.R
 8cdeb7e5fd01d54a69c19318b215c4ea *R/ale_profile.R
 899af278815e85701aa594659f305bcd *R/all_identical.R
@@ -33,7 +33,7 @@ ffdb9bed862188f878881f04bffcc5c4 *R/light_recode.R
 de93befbb0f25d540a2390915e68e3a9 *R/plot_light_effects.R
 e125ebe744bb8437f6b3c99122353fc9 *R/plot_light_global_surrogate.R
 2b17604fc71d0f24658c920be5c1f271 *R/plot_light_ice.R
-be1fa5097b2683a19556a230984dafe7 *R/plot_light_importance.R
+77c3a0d1e147699e8ba04a054cedafa6 *R/plot_light_importance.R
 29092764f2a80f3a75d4ba18b622c7f3 *R/plot_light_performance.R
 a423c490bf58866cf066ccfb7253c31a *R/plot_light_profile.R
 8f4317aecd21be6a037a2eb144ab015c *R/plot_light_scatter.R
@@ -49,7 +49,7 @@ a8f541d3c2d7989a19ab3c6342b0b3c2 *R/response.R
 a8018f0a0662a558607e0e024c9980af *build/vignette.rds
 28eb66c0e79cff303d08144a8e248b34 *inst/doc/flashlight.R
 8a8d23d3dfeb6b09e2a98ccc6a4ba1ff *inst/doc/flashlight.Rmd
-0ed82cfb47276422a61a3fc223a9f270 *inst/doc/flashlight.html
+7ce4d2977b53a065cf5ae6798b35f894 *inst/doc/flashlight.html
 e451cdf3890fc0e5e9c602a3b077d729 *man/add_shap.Rd
 9cb51c2043520bd465d9b67b45c63eef *man/ale_profile.Rd
 a2859abc0374f3d4ea117fd56d9d9b96 *man/all_identical.Rd
