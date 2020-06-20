@@ -1,3 +1,25 @@
+# flashlight 0.7.3
+
+This is a documentation and maintainance release.
+
+## Maintainance
+
+- Switched to dplyr 1.0.0.
+
+- Added 270+ unit tests.
+
+- Added vignettes on how to use flashlight with `caret` and `mlr3`.
+
+## Minor changes of defaults
+
+- The plots of `light_breakdown` have been slightly improved.
+
+## Bug fixes
+
+- `light_effects` and `light_profile` did not work correctly if `pred` are provided together with a `pd_indices`.
+
+- Using `pred` in `light_effects` and `light_profile` with a multiflashlight will now produce an informative error.
+
 # flashlight 0.7.2
 
 ## Visible changes of defaults

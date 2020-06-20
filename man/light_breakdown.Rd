@@ -29,7 +29,7 @@ light_breakdown(x, ...)
   step_name = "step",
   description_name = "description",
   description = TRUE,
-  digits = 3,
+  digits = 2,
   ...
 )
 

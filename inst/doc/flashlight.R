@@ -111,15 +111,16 @@ test <- prep[ind == 1, ]
 fit_lm <- lm(update.formula(form, . ~ . + I(sqft_living^2)), data = prep_lm(train))
 
 # Random forest
-fit_rf <- ranger(form, data = train, respect.unordered.factors = TRUE, seed = 8373)
+fit_rf <- ranger(form, data = train, respect.unordered.factors = TRUE, 
+                 num.trees = 100, seed = 8373)
 cat("R-squared OOB:", fit_rf$r.squared)
 
 # Gradient boosting
 dtrain <- xgb.DMatrix(prep_xgb(train, x), label = train[["log_price"]])
 dvalid <- xgb.DMatrix(prep_xgb(valid, x), label = valid[["log_price"]])
 
-params <- list(learning_rate = 0.1,
-               max_depth = 6,
+params <- list(learning_rate = 0.2,
+               max_depth = 5,
                alpha = 1,
                lambda = 1,
                colsample_bytree = 0.8)
@@ -128,7 +129,7 @@ fit_xgb <- xgb.train(params,
                      data = dtrain,
                      watchlist = list(train = dtrain, valid = dvalid),
                      nrounds = 250,
-                     print_every_n = 50,
+                     print_every_n = 10,
                      objective = "reg:linear")
 
 ## -----------------------------------------------------------------------------
@@ -272,12 +273,12 @@ pr <- light_scatter(fls, v = "sqft_living", n_max = 300)
 plot(pr, alpha = 0.2)
 
 ## -----------------------------------------------------------------------------
-st <- light_interaction(fls, v = x, grid_size = 30, n_max = 100)
+st <- light_interaction(fls, v = x, grid_size = 30, n_max = 50, seed = 42)
 plot(st)
 
 ## -----------------------------------------------------------------------------
 st_pair <- light_interaction(fls, v = most_important(st, 4), 
-                             pairwise = TRUE, grid_size = 30, n_max = 100)
+                             pairwise = TRUE, n_max = 50, seed = 42)
 plot(st_pair)
 
 ## -----------------------------------------------------------------------------
