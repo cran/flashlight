@@ -14,8 +14,13 @@ library(flashlight)      # model interpretation
 library(MetricsWeighted) # metrics
 library(dplyr)           # data prep
 library(moderndive)      # data
-library(xgboost)         # gradient boosting
+library(rpart)           # used if XGBoost not available
 library(ranger)          # random forest
+
+has_xgb <- requireNamespace("xgboost", quietly = TRUE)
+if (!has_xgb) {
+  message("Since XGBoost is not available, will use rpart.")
+}
 
 ## -----------------------------------------------------------------------------
 # Fit model
@@ -70,14 +75,15 @@ plot(light_global_surrogate(fl))
 head(house_prices)
 
 ## -----------------------------------------------------------------------------
-prep <- mutate(house_prices,
-               log_price = log(price),
-               grade = as.integer(as.character(grade)),
-               year = as.numeric(format(date, '%Y')),
-               age = year - yr_built,
-               year = factor(year),
-               zipcode = as.factor(as.character(zipcode)),
-               waterfront = factor(waterfront, levels = c(FALSE, TRUE), labels = c("no", "yes")))
+prep <- mutate(
+  house_prices,
+  log_price = log(price),
+  grade = as.integer(as.character(grade)),
+  year = as.numeric(format(date, '%Y')),
+  age = year - yr_built,
+  year = factor(year),
+  zipcode = as.factor(as.character(zipcode)),
+  waterfront = factor(waterfront, levels = c(FALSE, TRUE), labels = c("no", "yes")))
 
 x <- c("grade", "year", "age", "sqft_living", "sqft_lot", "zipcode",
        "condition", "waterfront")
@@ -116,21 +122,30 @@ fit_rf <- ranger(form, data = train, respect.unordered.factors = TRUE,
 cat("R-squared OOB:", fit_rf$r.squared)
 
 # Gradient boosting
-dtrain <- xgb.DMatrix(prep_xgb(train, x), label = train[["log_price"]])
-dvalid <- xgb.DMatrix(prep_xgb(valid, x), label = valid[["log_price"]])
-
-params <- list(learning_rate = 0.2,
-               max_depth = 5,
-               alpha = 1,
-               lambda = 1,
-               colsample_bytree = 0.8)
-
-fit_xgb <- xgb.train(params,
-                     data = dtrain,
-                     watchlist = list(train = dtrain, valid = dvalid),
-                     nrounds = 250,
-                     print_every_n = 10,
-                     objective = "reg:linear")
+if (has_xgb) {
+  dtrain <- xgboost::xgb.DMatrix(prep_xgb(train, x), label = train[["log_price"]])
+  dvalid <- xgboost::xgb.DMatrix(prep_xgb(valid, x), label = valid[["log_price"]])
+  
+  params <- list(learning_rate = 0.2,
+                 max_depth = 5,
+                 alpha = 1,
+                 lambda = 1,
+                 colsample_bytree = 0.8)
+  
+  fit_xgb <- xgboost::xgb.train(
+    params,
+    data = dtrain,
+    watchlist = list(train = dtrain, valid = dvalid),
+    nrounds = 250,
+    print_every_n = 25,
+    objective = "reg:squarederror"
+  )
+} else {
+  fit_xgb <- rpart(form, data = train, control = list(xval = 0, cp = -1, minsplit = 100))
+  prep_xgb <- function(data, x) {
+    data
+  }
+}
 
 ## -----------------------------------------------------------------------------
 fl_mean <- flashlight(model = mean(train$log_price), label = "mean",

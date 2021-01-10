@@ -12,10 +12,35 @@
 
 <meta name="author" content="Michael Mayer" />
 
-<meta name="date" content="2020-06-20" />
+<meta name="date" content="2021-01-10" />
 
 <title>Using flashlight</title>
 
+<script>// Hide empty <a> tag within highlighted CodeBlock for screen reader accessibility (see https://github.com/jgm/pandoc/issues/6352#issuecomment-626106786) -->
+// v0.0.1
+// Written by JooYoung Seo (jooyoung@psu.edu) and Atsushi Yasumoto on June 1st, 2020.
+
+document.addEventListener('DOMContentLoaded', function() {
+  const codeList = document.getElementsByClassName("sourceCode");
+  for (var i = 0; i < codeList.length; i++) {
+    var linkList = codeList[i].getElementsByTagName('a');
+    for (var j = 0; j < linkList.length; j++) {
+      if (linkList[j].innerHTML === "") {
+        linkList[j].setAttribute('aria-hidden', 'true');
+      }
+    }
+  }
+});
+</script>
+
+<style type="text/css">
+  code{white-space: pre-wrap;}
+  span.smallcaps{font-variant: small-caps;}
+  span.underline{text-decoration: underline;}
+  div.column{display: inline-block; vertical-align: top; width: 50%;}
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+  ul.task-list{list-style: none;}
+    </style>
 
 
 <style type="text/css">code{white-space: pre;}</style>
@@ -106,6 +131,7 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
   }
 })();
 </script>
+
 
 
 
@@ -303,7 +329,7 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 
 <h1 class="title toc-ignore">Using flashlight</h1>
 <h4 class="author">Michael Mayer</h4>
-<h4 class="date">2020-06-20</h4>
+<h4 class="date">2021-01-10</h4>
 
 
 
@@ -312,8 +338,13 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 <span id="cb1-3"><a href="#cb1-3"></a><span class="kw">library</span>(MetricsWeighted) <span class="co"># metrics</span></span>
 <span id="cb1-4"><a href="#cb1-4"></a><span class="kw">library</span>(dplyr)           <span class="co"># data prep</span></span>
 <span id="cb1-5"><a href="#cb1-5"></a><span class="kw">library</span>(moderndive)      <span class="co"># data</span></span>
-<span id="cb1-6"><a href="#cb1-6"></a><span class="kw">library</span>(xgboost)         <span class="co"># gradient boosting</span></span>
-<span id="cb1-7"><a href="#cb1-7"></a><span class="kw">library</span>(ranger)          <span class="co"># random forest</span></span></code></pre></div>
+<span id="cb1-6"><a href="#cb1-6"></a><span class="kw">library</span>(rpart)           <span class="co"># used if XGBoost not available</span></span>
+<span id="cb1-7"><a href="#cb1-7"></a><span class="kw">library</span>(ranger)          <span class="co"># random forest</span></span>
+<span id="cb1-8"><a href="#cb1-8"></a></span>
+<span id="cb1-9"><a href="#cb1-9"></a>has_xgb &lt;-<span class="st"> </span><span class="kw">requireNamespace</span>(<span class="st">&quot;xgboost&quot;</span>, <span class="dt">quietly =</span> <span class="ot">TRUE</span>)</span>
+<span id="cb1-10"><a href="#cb1-10"></a><span class="cf">if</span> (<span class="op">!</span>has_xgb) {</span>
+<span id="cb1-11"><a href="#cb1-11"></a>  <span class="kw">message</span>(<span class="st">&quot;Since XGBoost is not available, will use rpart.&quot;</span>)</span>
+<span id="cb1-12"><a href="#cb1-12"></a>}</span></code></pre></div>
 <div id="introduction" class="section level2">
 <h2>Introduction</h2>
 <p>In contrast to classical statistical modelling techniques like linear regression, modern machine learning approaches tend to provide black box results. In areas like visual computing or natural language processing, this is not an issue since their focus is usually on predicting things. Either the predictions are sufficiently useful in practice or the model won’t be used. However, in areas where the purpose of a statistical model is also to explain or validate underlying theories (e.g. in medicine, economics, and biology), black box models are of little use.</p>
@@ -548,17 +579,18 @@ plot(light_profile(fls, v = &quot;Petal.Length&quot;, type = &quot;shap&quot;))<
 <div id="data-preparation" class="section level3">
 <h3>Data preparation</h3>
 <p>Let’s do some data preparation common for all models under consideration.</p>
-<div class="sourceCode" id="cb24"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1"></a>prep &lt;-<span class="st"> </span><span class="kw">mutate</span>(house_prices,</span>
-<span id="cb24-2"><a href="#cb24-2"></a>               <span class="dt">log_price =</span> <span class="kw">log</span>(price),</span>
-<span id="cb24-3"><a href="#cb24-3"></a>               <span class="dt">grade =</span> <span class="kw">as.integer</span>(<span class="kw">as.character</span>(grade)),</span>
-<span id="cb24-4"><a href="#cb24-4"></a>               <span class="dt">year =</span> <span class="kw">as.numeric</span>(<span class="kw">format</span>(date, <span class="st">&#39;%Y&#39;</span>)),</span>
-<span id="cb24-5"><a href="#cb24-5"></a>               <span class="dt">age =</span> year <span class="op">-</span><span class="st"> </span>yr_built,</span>
-<span id="cb24-6"><a href="#cb24-6"></a>               <span class="dt">year =</span> <span class="kw">factor</span>(year),</span>
-<span id="cb24-7"><a href="#cb24-7"></a>               <span class="dt">zipcode =</span> <span class="kw">as.factor</span>(<span class="kw">as.character</span>(zipcode)),</span>
-<span id="cb24-8"><a href="#cb24-8"></a>               <span class="dt">waterfront =</span> <span class="kw">factor</span>(waterfront, <span class="dt">levels =</span> <span class="kw">c</span>(<span class="ot">FALSE</span>, <span class="ot">TRUE</span>), <span class="dt">labels =</span> <span class="kw">c</span>(<span class="st">&quot;no&quot;</span>, <span class="st">&quot;yes&quot;</span>)))</span>
-<span id="cb24-9"><a href="#cb24-9"></a></span>
-<span id="cb24-10"><a href="#cb24-10"></a>x &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;grade&quot;</span>, <span class="st">&quot;year&quot;</span>, <span class="st">&quot;age&quot;</span>, <span class="st">&quot;sqft_living&quot;</span>, <span class="st">&quot;sqft_lot&quot;</span>, <span class="st">&quot;zipcode&quot;</span>,</span>
-<span id="cb24-11"><a href="#cb24-11"></a>       <span class="st">&quot;condition&quot;</span>, <span class="st">&quot;waterfront&quot;</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb24"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1"></a>prep &lt;-<span class="st"> </span><span class="kw">mutate</span>(</span>
+<span id="cb24-2"><a href="#cb24-2"></a>  house_prices,</span>
+<span id="cb24-3"><a href="#cb24-3"></a>  <span class="dt">log_price =</span> <span class="kw">log</span>(price),</span>
+<span id="cb24-4"><a href="#cb24-4"></a>  <span class="dt">grade =</span> <span class="kw">as.integer</span>(<span class="kw">as.character</span>(grade)),</span>
+<span id="cb24-5"><a href="#cb24-5"></a>  <span class="dt">year =</span> <span class="kw">as.numeric</span>(<span class="kw">format</span>(date, <span class="st">&#39;%Y&#39;</span>)),</span>
+<span id="cb24-6"><a href="#cb24-6"></a>  <span class="dt">age =</span> year <span class="op">-</span><span class="st"> </span>yr_built,</span>
+<span id="cb24-7"><a href="#cb24-7"></a>  <span class="dt">year =</span> <span class="kw">factor</span>(year),</span>
+<span id="cb24-8"><a href="#cb24-8"></a>  <span class="dt">zipcode =</span> <span class="kw">as.factor</span>(<span class="kw">as.character</span>(zipcode)),</span>
+<span id="cb24-9"><a href="#cb24-9"></a>  <span class="dt">waterfront =</span> <span class="kw">factor</span>(waterfront, <span class="dt">levels =</span> <span class="kw">c</span>(<span class="ot">FALSE</span>, <span class="ot">TRUE</span>), <span class="dt">labels =</span> <span class="kw">c</span>(<span class="st">&quot;no&quot;</span>, <span class="st">&quot;yes&quot;</span>)))</span>
+<span id="cb24-10"><a href="#cb24-10"></a></span>
+<span id="cb24-11"><a href="#cb24-11"></a>x &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;grade&quot;</span>, <span class="st">&quot;year&quot;</span>, <span class="st">&quot;age&quot;</span>, <span class="st">&quot;sqft_living&quot;</span>, <span class="st">&quot;sqft_lot&quot;</span>, <span class="st">&quot;zipcode&quot;</span>,</span>
+<span id="cb24-12"><a href="#cb24-12"></a>       <span class="st">&quot;condition&quot;</span>, <span class="st">&quot;waterfront&quot;</span>)</span></code></pre></div>
 </div>
 <div id="modelling" class="section level3">
 <h3>Modelling</h3>
@@ -598,47 +630,41 @@ plot(light_profile(fls, v = &quot;Petal.Length&quot;, type = &quot;shap&quot;))<
 <span id="cb26-18"><a href="#cb26-18"></a><span class="co">#&gt; R-squared OOB: 0.8654302</span></span>
 <span id="cb26-19"><a href="#cb26-19"></a></span>
 <span id="cb26-20"><a href="#cb26-20"></a><span class="co"># Gradient boosting</span></span>
-<span id="cb26-21"><a href="#cb26-21"></a>dtrain &lt;-<span class="st"> </span><span class="kw">xgb.DMatrix</span>(<span class="kw">prep_xgb</span>(train, x), <span class="dt">label =</span> train[[<span class="st">&quot;log_price&quot;</span>]])</span>
-<span id="cb26-22"><a href="#cb26-22"></a>dvalid &lt;-<span class="st"> </span><span class="kw">xgb.DMatrix</span>(<span class="kw">prep_xgb</span>(valid, x), <span class="dt">label =</span> valid[[<span class="st">&quot;log_price&quot;</span>]])</span>
-<span id="cb26-23"><a href="#cb26-23"></a></span>
-<span id="cb26-24"><a href="#cb26-24"></a>params &lt;-<span class="st"> </span><span class="kw">list</span>(<span class="dt">learning_rate =</span> <span class="fl">0.2</span>,</span>
-<span id="cb26-25"><a href="#cb26-25"></a>               <span class="dt">max_depth =</span> <span class="dv">5</span>,</span>
-<span id="cb26-26"><a href="#cb26-26"></a>               <span class="dt">alpha =</span> <span class="dv">1</span>,</span>
-<span id="cb26-27"><a href="#cb26-27"></a>               <span class="dt">lambda =</span> <span class="dv">1</span>,</span>
-<span id="cb26-28"><a href="#cb26-28"></a>               <span class="dt">colsample_bytree =</span> <span class="fl">0.8</span>)</span>
-<span id="cb26-29"><a href="#cb26-29"></a></span>
-<span id="cb26-30"><a href="#cb26-30"></a>fit_xgb &lt;-<span class="st"> </span><span class="kw">xgb.train</span>(params,</span>
-<span id="cb26-31"><a href="#cb26-31"></a>                     <span class="dt">data =</span> dtrain,</span>
-<span id="cb26-32"><a href="#cb26-32"></a>                     <span class="dt">watchlist =</span> <span class="kw">list</span>(<span class="dt">train =</span> dtrain, <span class="dt">valid =</span> dvalid),</span>
-<span id="cb26-33"><a href="#cb26-33"></a>                     <span class="dt">nrounds =</span> <span class="dv">250</span>,</span>
-<span id="cb26-34"><a href="#cb26-34"></a>                     <span class="dt">print_every_n =</span> <span class="dv">10</span>,</span>
-<span id="cb26-35"><a href="#cb26-35"></a>                     <span class="dt">objective =</span> <span class="st">&quot;reg:linear&quot;</span>)</span>
-<span id="cb26-36"><a href="#cb26-36"></a><span class="co">#&gt; [1]  train-rmse:10.048225    valid-rmse:10.056726 </span></span>
-<span id="cb26-37"><a href="#cb26-37"></a><span class="co">#&gt; [11] train-rmse:1.120189 valid-rmse:1.127692 </span></span>
-<span id="cb26-38"><a href="#cb26-38"></a><span class="co">#&gt; [21] train-rmse:0.276046 valid-rmse:0.284578 </span></span>
-<span id="cb26-39"><a href="#cb26-39"></a><span class="co">#&gt; [31] train-rmse:0.220493 valid-rmse:0.230205 </span></span>
-<span id="cb26-40"><a href="#cb26-40"></a><span class="co">#&gt; [41] train-rmse:0.201741 valid-rmse:0.213547 </span></span>
-<span id="cb26-41"><a href="#cb26-41"></a><span class="co">#&gt; [51] train-rmse:0.191478 valid-rmse:0.205166 </span></span>
-<span id="cb26-42"><a href="#cb26-42"></a><span class="co">#&gt; [61] train-rmse:0.185060 valid-rmse:0.200389 </span></span>
-<span id="cb26-43"><a href="#cb26-43"></a><span class="co">#&gt; [71] train-rmse:0.179371 valid-rmse:0.195981 </span></span>
-<span id="cb26-44"><a href="#cb26-44"></a><span class="co">#&gt; [81] train-rmse:0.175560 valid-rmse:0.193149 </span></span>
-<span id="cb26-45"><a href="#cb26-45"></a><span class="co">#&gt; [91] train-rmse:0.171573 valid-rmse:0.190594 </span></span>
-<span id="cb26-46"><a href="#cb26-46"></a><span class="co">#&gt; [101]    train-rmse:0.169047 valid-rmse:0.189242 </span></span>
-<span id="cb26-47"><a href="#cb26-47"></a><span class="co">#&gt; [111]    train-rmse:0.166089 valid-rmse:0.187361 </span></span>
-<span id="cb26-48"><a href="#cb26-48"></a><span class="co">#&gt; [121]    train-rmse:0.164131 valid-rmse:0.186762 </span></span>
-<span id="cb26-49"><a href="#cb26-49"></a><span class="co">#&gt; [131]    train-rmse:0.161985 valid-rmse:0.185919 </span></span>
-<span id="cb26-50"><a href="#cb26-50"></a><span class="co">#&gt; [141]    train-rmse:0.159950 valid-rmse:0.185113 </span></span>
+<span id="cb26-21"><a href="#cb26-21"></a><span class="cf">if</span> (has_xgb) {</span>
+<span id="cb26-22"><a href="#cb26-22"></a>  dtrain &lt;-<span class="st"> </span>xgboost<span class="op">::</span><span class="kw">xgb.DMatrix</span>(<span class="kw">prep_xgb</span>(train, x), <span class="dt">label =</span> train[[<span class="st">&quot;log_price&quot;</span>]])</span>
+<span id="cb26-23"><a href="#cb26-23"></a>  dvalid &lt;-<span class="st"> </span>xgboost<span class="op">::</span><span class="kw">xgb.DMatrix</span>(<span class="kw">prep_xgb</span>(valid, x), <span class="dt">label =</span> valid[[<span class="st">&quot;log_price&quot;</span>]])</span>
+<span id="cb26-24"><a href="#cb26-24"></a>  </span>
+<span id="cb26-25"><a href="#cb26-25"></a>  params &lt;-<span class="st"> </span><span class="kw">list</span>(<span class="dt">learning_rate =</span> <span class="fl">0.2</span>,</span>
+<span id="cb26-26"><a href="#cb26-26"></a>                 <span class="dt">max_depth =</span> <span class="dv">5</span>,</span>
+<span id="cb26-27"><a href="#cb26-27"></a>                 <span class="dt">alpha =</span> <span class="dv">1</span>,</span>
+<span id="cb26-28"><a href="#cb26-28"></a>                 <span class="dt">lambda =</span> <span class="dv">1</span>,</span>
+<span id="cb26-29"><a href="#cb26-29"></a>                 <span class="dt">colsample_bytree =</span> <span class="fl">0.8</span>)</span>
+<span id="cb26-30"><a href="#cb26-30"></a>  </span>
+<span id="cb26-31"><a href="#cb26-31"></a>  fit_xgb &lt;-<span class="st"> </span>xgboost<span class="op">::</span><span class="kw">xgb.train</span>(</span>
+<span id="cb26-32"><a href="#cb26-32"></a>    params,</span>
+<span id="cb26-33"><a href="#cb26-33"></a>    <span class="dt">data =</span> dtrain,</span>
+<span id="cb26-34"><a href="#cb26-34"></a>    <span class="dt">watchlist =</span> <span class="kw">list</span>(<span class="dt">train =</span> dtrain, <span class="dt">valid =</span> dvalid),</span>
+<span id="cb26-35"><a href="#cb26-35"></a>    <span class="dt">nrounds =</span> <span class="dv">250</span>,</span>
+<span id="cb26-36"><a href="#cb26-36"></a>    <span class="dt">print_every_n =</span> <span class="dv">25</span>,</span>
+<span id="cb26-37"><a href="#cb26-37"></a>    <span class="dt">objective =</span> <span class="st">&quot;reg:squarederror&quot;</span></span>
+<span id="cb26-38"><a href="#cb26-38"></a>  )</span>
+<span id="cb26-39"><a href="#cb26-39"></a>} <span class="cf">else</span> {</span>
+<span id="cb26-40"><a href="#cb26-40"></a>  fit_xgb &lt;-<span class="st"> </span><span class="kw">rpart</span>(form, <span class="dt">data =</span> train, <span class="dt">control =</span> <span class="kw">list</span>(<span class="dt">xval =</span> <span class="dv">0</span>, <span class="dt">cp =</span> <span class="dv">-1</span>, <span class="dt">minsplit =</span> <span class="dv">100</span>))</span>
+<span id="cb26-41"><a href="#cb26-41"></a>  prep_xgb &lt;-<span class="st"> </span><span class="cf">function</span>(data, x) {</span>
+<span id="cb26-42"><a href="#cb26-42"></a>    data</span>
+<span id="cb26-43"><a href="#cb26-43"></a>  }</span>
+<span id="cb26-44"><a href="#cb26-44"></a>}</span>
+<span id="cb26-45"><a href="#cb26-45"></a><span class="co">#&gt; [1]  train-rmse:10.048225    valid-rmse:10.056726 </span></span>
+<span id="cb26-46"><a href="#cb26-46"></a><span class="co">#&gt; [26] train-rmse:0.240650 valid-rmse:0.249891 </span></span>
+<span id="cb26-47"><a href="#cb26-47"></a><span class="co">#&gt; [51] train-rmse:0.191478 valid-rmse:0.205166 </span></span>
+<span id="cb26-48"><a href="#cb26-48"></a><span class="co">#&gt; [76] train-rmse:0.177957 valid-rmse:0.195167 </span></span>
+<span id="cb26-49"><a href="#cb26-49"></a><span class="co">#&gt; [101]    train-rmse:0.169047 valid-rmse:0.189242 </span></span>
+<span id="cb26-50"><a href="#cb26-50"></a><span class="co">#&gt; [126]    train-rmse:0.162973 valid-rmse:0.186441 </span></span>
 <span id="cb26-51"><a href="#cb26-51"></a><span class="co">#&gt; [151]    train-rmse:0.158342 valid-rmse:0.184533 </span></span>
-<span id="cb26-52"><a href="#cb26-52"></a><span class="co">#&gt; [161]    train-rmse:0.156986 valid-rmse:0.184286 </span></span>
-<span id="cb26-53"><a href="#cb26-53"></a><span class="co">#&gt; [171]    train-rmse:0.155399 valid-rmse:0.184044 </span></span>
-<span id="cb26-54"><a href="#cb26-54"></a><span class="co">#&gt; [181]    train-rmse:0.154224 valid-rmse:0.183937 </span></span>
-<span id="cb26-55"><a href="#cb26-55"></a><span class="co">#&gt; [191]    train-rmse:0.153022 valid-rmse:0.183618 </span></span>
-<span id="cb26-56"><a href="#cb26-56"></a><span class="co">#&gt; [201]    train-rmse:0.151803 valid-rmse:0.183548 </span></span>
-<span id="cb26-57"><a href="#cb26-57"></a><span class="co">#&gt; [211]    train-rmse:0.150595 valid-rmse:0.183108 </span></span>
-<span id="cb26-58"><a href="#cb26-58"></a><span class="co">#&gt; [221]    train-rmse:0.149530 valid-rmse:0.182821 </span></span>
-<span id="cb26-59"><a href="#cb26-59"></a><span class="co">#&gt; [231]    train-rmse:0.148626 valid-rmse:0.182916 </span></span>
-<span id="cb26-60"><a href="#cb26-60"></a><span class="co">#&gt; [241]    train-rmse:0.147686 valid-rmse:0.183019 </span></span>
-<span id="cb26-61"><a href="#cb26-61"></a><span class="co">#&gt; [250]    train-rmse:0.146648 valid-rmse:0.182994</span></span></code></pre></div>
+<span id="cb26-52"><a href="#cb26-52"></a><span class="co">#&gt; [176]    train-rmse:0.154759 valid-rmse:0.183916 </span></span>
+<span id="cb26-53"><a href="#cb26-53"></a><span class="co">#&gt; [201]    train-rmse:0.151803 valid-rmse:0.183548 </span></span>
+<span id="cb26-54"><a href="#cb26-54"></a><span class="co">#&gt; [226]    train-rmse:0.149121 valid-rmse:0.182889 </span></span>
+<span id="cb26-55"><a href="#cb26-55"></a><span class="co">#&gt; [250]    train-rmse:0.146648 valid-rmse:0.182994</span></span></code></pre></div>
 </div>
 <div id="creating-the-flashlights" class="section level3">
 <h3>Creating the flashlights</h3>
@@ -1107,10 +1133,10 @@ plot(light_profile(fls, v = &quot;Petal.Length&quot;, type = &quot;shap&quot;))<
 <h2>References</h2>
 <div id="refs" class="references">
 <div id="ref-apley">
-<p>Apley, Daniel W., and Jingyu Zhu. 2016. “Visualizing the Effects of Predictor Variables in Black Box Supervised Learning Models.” <a href="http://arxiv.org/abs/1612.08468">http://arxiv.org/abs/1612.08468</a>.</p>
+<p>Apley, Daniel W., and Jingyu Zhu. 2016. “Visualizing the Effects of Predictor Variables in Black Box Supervised Learning Models.” <a href="https://arxiv.org/abs/1612.08468">https://arxiv.org/abs/1612.08468</a>.</p>
 </div>
 <div id="ref-fisher">
-<p>Fisher, Aaron, Cynthia Rudin, and Francesca Dominici. 2018. “All Models Are Wrong, but Many Are Useful: Learning a Variable’s Importance by Studying an Entire Class of Prediction Models Simultaneously.” <a href="http://arxiv.org/abs/1801.01489">http://arxiv.org/abs/1801.01489</a>.</p>
+<p>Fisher, Aaron, Cynthia Rudin, and Francesca Dominici. 2018. “All Models Are Wrong, but Many Are Useful: Learning a Variable’s Importance by Studying an Entire Class of Prediction Models Simultaneously.” <a href="https://arxiv.org/abs/1801.01489">https://arxiv.org/abs/1801.01489</a>.</p>
 </div>
 <div id="ref-friedman2001">
 <p>Friedman, Jerome H. 2001. “Greedy Function Approximation: A Gradient Boosting Machine.” <em>Ann. Statist.</em> 29 (5): 1189–1232. <a href="https://doi.org/10.1214/aos/1013203451">https://doi.org/10.1214/aos/1013203451</a>.</p>
@@ -1122,13 +1148,13 @@ plot(light_profile(fls, v = &quot;Petal.Length&quot;, type = &quot;shap&quot;))<
 <p>Goldstein, Alex, Adam Kapelner, Justin Bleich, and Emil Pitkin. 2015. “Peeking Inside the Black Box: Visualizing Statistical Learning with Plots of Individual Conditional Expectation.” <em>Journal of Computational and Graphical Statistics</em> 24 (1): 44–65. <a href="https://doi.org/10.1080/10618600.2014.907095">https://doi.org/10.1080/10618600.2014.907095</a>.</p>
 </div>
 <div id="ref-gosiewska">
-<p>Gosiewska, Alicja, and Przemyslaw Biecek. 2019. “Do Not Trust Additive Explanations.” <a href="http://arxiv.org/abs/1903.11420">http://arxiv.org/abs/1903.11420</a>.</p>
+<p>Gosiewska, Alicja, and Przemyslaw Biecek. 2019. “Do Not Trust Additive Explanations.” <a href="https://arxiv.org/abs/1903.11420">https://arxiv.org/abs/1903.11420</a>.</p>
 </div>
 <div id="ref-Lundberg2020">
 <p>Lundberg, Scott M., Gabriel Erion, Hugh Chen, Alex DeGrave, Jordan M. Prutkin, Bala Nair, Ronit Katz, Jonathan Himmelfarb, Nisha Bansal, and Su-In Lee. 2020. “From Local Explanations to Global Understanding with Explainable Ai for Trees.” <em>Nature Machine Intelligence</em> 2 (1): 2522–5839.</p>
 </div>
 <div id="ref-Lundberg2017">
-<p>Lundberg, Scott M, and Su-In Lee. 2017. “A Unified Approach to Interpreting Model Predictions.” In <em>Advances in Neural Information Processing Systems 30</em>, edited by I. Guyon, U. V. Luxburg, S. Bengio, H. Wallach, R. Fergus, S. Vishwanathan, and R. Garnett, 4765–74. Curran Associates, Inc. <a href="http://papers.nips.cc/paper/7062-a-unified-approach-to-interpreting-model-predictions.pdf">http://papers.nips.cc/paper/7062-a-unified-approach-to-interpreting-model-predictions.pdf</a>.</p>
+<p>Lundberg, Scott M, and Su-In Lee. 2017. “A Unified Approach to Interpreting Model Predictions.” In <em>Advances in Neural Information Processing Systems 30</em>, edited by I. Guyon, U. V. Luxburg, S. Bengio, H. Wallach, R. Fergus, S. Vishwanathan, and R. Garnett, 4765–74. Curran Associates, Inc. <a href="https://papers.nips.cc/paper/7062-a-unified-approach-to-interpreting-model-predictions.pdf">https://papers.nips.cc/paper/7062-a-unified-approach-to-interpreting-model-predictions.pdf</a>.</p>
 </div>
 <div id="ref-molnar">
 <p>Molnar, Christoph. 2019. <em>Interpretable Machine Learning: A Guide for Making Black Box Models Explainable</em>. <a href="https://christophm.github.io/interpretable-ml-book/">https://christophm.github.io/interpretable-ml-book/</a>.</p>
