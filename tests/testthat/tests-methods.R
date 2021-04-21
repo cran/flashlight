@@ -34,8 +34,9 @@ test_that("light_recode works", {
   fit <- lm(Sepal.Length ~ Species + 0, data = iris)
   fl <- flashlight(model = fit, label = "lm", data = iris, y = "Sepal.Length")
   eff <- light_effects(fl, v = "Species")
-  eff <- light_recode(eff, what = "type_name",
-                      levels = c("response", "predicted", "partial dependence", "ale"),
+  eff <- light_recode(eff, what = "type",
+                      levels = c("response", "predicted",
+                                 "partial dependence", "ale"),
                       labels = c("Observed", "Fitted", "PD", "ALE"))
   expect_equal(as.character(eff$pd$type[1]), "PD")
 })
@@ -43,7 +44,7 @@ test_that("light_recode works", {
 test_that("selected 'is' functions work", {
   fit <- lm(Sepal.Length ~ Species + 0, data = iris)
   fl <- flashlight(model = fit, label = "lm", data = iris, y = "Sepal.Length")
-  fls <- multiflashlight(list(fl, fl))
+  fls <- multiflashlight(list(fl, flashlight(fl, label = "lm2")))
 
   expect_true(is.flashlight(fl))
   expect_false(is.flashlight(1))
@@ -90,13 +91,17 @@ test_that("selected 'is' functions work", {
 
   expect_true(is.light(light_breakdown(fl, new_obs = iris[1, ])))
   expect_true(is.light_breakdown(light_breakdown(fl, new_obs = iris[1, ])))
-  expect_true(is.light_breakdown_multi(light_breakdown(fls, new_obs = iris[1, ])))
-  expect_false(is.light_breakdown_multi(light_breakdown(fl, new_obs = iris[1, ])))
+  expect_true(
+    is.light_breakdown_multi(light_breakdown(fls, new_obs = iris[1, ]))
+  )
+  expect_false(
+    is.light_breakdown_multi(light_breakdown(fl, new_obs = iris[1, ]))
+  )
 })
 
 fit <- lm(Sepal.Length ~ Species + 0, data = iris)
 fl <- flashlight(model = fit, label = "lm", data = iris, y = "Sepal.Length")
-fls <- multiflashlight(list(fl, fl))
+fls <- multiflashlight(list(fl, flashlight(fl, label = "lm2")))
 
 test_that("response method works for (multi-)flashlights", {
   expect_equal(response(fl), iris$Sepal.Length)

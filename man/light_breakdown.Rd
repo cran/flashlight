@@ -22,12 +22,6 @@ light_breakdown(x, ...)
   n_perm = 20,
   seed = NULL,
   use_linkinv = FALSE,
-  after_name = "after",
-  before_name = "before",
-  label_name = "label",
-  variable_name = "variable",
-  step_name = "step",
-  description_name = "description",
   description = TRUE,
   digits = 2,
   ...
@@ -46,7 +40,7 @@ light_breakdown(x, ...)
 
 \item{by}{An optional vector of column names used to filter \code{data} for rows with equal values in "by" variables as \code{new_obs}.}
 
-\item{v}{Vector of variables to assess contribution for. Defaults to all except those specified by "y", "w" and "by".}
+\item{v}{Vector of variable names to assess contribution for. Defaults to all except those specified by "y", "w" and "by".}
 
 \item{visit_strategy}{In what sequence should variables be visited? By "importance", by \code{n_perm} "permutation" or as "v" (see Details).}
 
@@ -58,33 +52,15 @@ light_breakdown(x, ...)
 
 \item{use_linkinv}{Should retransformation function be applied? Default is \code{FALSE}.}
 
-\item{after_name}{Column name in resulting \code{data} containing prediction after the step in \code{step_name}. Defaults to "after".}
-
-\item{before_name}{Column name in resulting \code{data} containing prediction before the step in \code{step_name}. Defaults to "before".}
-
-\item{label_name}{Column name in resulting \code{data} containing the label of the flashlight. Defaults to "label".}
-
-\item{variable_name}{Column name in resulting \code{data} containing the variable names. Defaults to "variable".}
-
-\item{step_name}{Column name in resulting \code{data} containing the step of the prediction process. Defaults to "step".}
-
-\item{description_name}{Column name in resulting \code{data} containing the description text to be visualized. Defaults to "description".}
-
 \item{description}{Should descriptions be added? Default is \code{TRUE}.}
 
 \item{digits}{Passed to \code{prettyNum} to format numbers in description text.}
 }
 \value{
-An object of class \code{light_breakdown}, \code{light} (and a list) with the following elements.
+An object of class \code{light_breakdown} with the following elements.
 \itemize{
-\item \code{data} A tibble with results. Can be used to build fully customized visualizations.
+\item \code{data} A tibble with results. Can be used to build fully customized visualizations. Column names can be controlled by \code{options(flashlight.column_name)}.
 \item \code{by} Same as input \code{by}.
-\item \code{after_name} Same as input \code{after_name}.
-\item \code{before_name} Same as input \code{before_name}.
-\item \code{label_name} Same as input \code{label_name}.
-\item \code{variable_name} Same as input \code{variable_name}.
-\item \code{step_name} Same as input \code{step_name}.
-\item \code{description_name} Same as input \code{description_name}.
 }
 }
 \description{

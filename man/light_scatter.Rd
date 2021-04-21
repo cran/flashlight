@@ -20,9 +20,6 @@ light_scatter(x, ...)
   use_linkinv = TRUE,
   n_max = 400,
   seed = NULL,
-  value_name = "value",
-  label_name = "label",
-  type_name = "type",
   ...
 )
 
@@ -33,7 +30,7 @@ light_scatter(x, ...)
 
 \item{...}{Further arguments passed from or to other methods.}
 
-\item{v}{The variable to be shown on the x-axis.}
+\item{v}{The variable name to be shown on the x-axis.}
 
 \item{data}{An optional \code{data.frame}. Not relevant for \code{type = "shap"}.}
 
@@ -46,23 +43,14 @@ light_scatter(x, ...)
 \item{n_max}{Maximum number of data rows to select. Will be randomly picked from the relevant data.}
 
 \item{seed}{An integer random seed used for subsampling.}
-
-\item{value_name}{Column name in resulting \code{data} containing the values belonging to \code{type}. Defaults to "value".}
-
-\item{label_name}{Column name in resulting \code{data} containing the label of the flashlight. Defaults to "label".}
-
-\item{type_name}{Column name in the resulting \code{data} with the plot \code{type}.}
 }
 \value{
-An object of class \code{light_scatter}, \code{light} (and a list) with the following elements.
+An object of class \code{light_scatter} with the following elements.
 \itemize{
-\item \code{data} A tibble with results. Can be used to build fully customized visualizations.
+\item \code{data} A tibble with results. Can be used to build fully customized visualizations. Column names can be controlled by \code{options(flashlight.column_name)}.
 \item \code{by} Same as input \code{by}.
 \item \code{v} The variable evaluated.
 \item \code{type} Same as input \code{type}. For information only.
-\item \code{value_name} Same as input \code{value_name}.
-\item \code{label_name} Same as input \code{label_name}.
-\item \code{type_name} Same as input \code{type_name}.
 }
 }
 \description{
