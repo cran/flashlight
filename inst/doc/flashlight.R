@@ -8,395 +8,126 @@ knitr::opts_chunk$set(
   fig.height = 4.5
 )
 
-## ----setup--------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 library(ggplot2)
-library(flashlight)      # model interpretation
-library(MetricsWeighted) # metrics
-library(dplyr)           # data prep
-library(moderndive)      # data
-library(rpart)           # used if XGBoost not available
-library(ranger)          # random forest
+library(MetricsWeighted)
+library(flashlight)
 
-has_xgb <- requireNamespace("xgboost", quietly = TRUE)
-if (!has_xgb) {
-  message("Since XGBoost is not available, will use rpart.")
-}
+fit_lm <- lm(Sepal.Length ~ ., data = iris)
 
-## -----------------------------------------------------------------------------
-# Fit model
-fit <- lm(Sepal.Length ~ ., data = iris)
-
-# Make flashlight
-fl <- flashlight(
-  model = fit, 
-  data = iris, 
-  y = "Sepal.Length", 
-  label = "ols",               
-  metrics = list(rmse = rmse, `R-squared` = r_squared)
-)
-
-# Performance: rmse and R-squared
-plot(light_performance(fl), fill = "darkred")
-plot(light_performance(fl, by = "Species"), fill = "darkred")
-
-# Variable importance by increase in rmse
-imp <- light_importance(fl, m_repetitions = 4)
-plot(imp, fill = "darkred")
-
-# ICE profiles for Petal.Width
-plot(light_ice(fl, v = "Petal.Width"))
-plot(light_ice(fl, v = "Petal.Width", center = "first"))
-
-# Partial dependence profiles for Petal.Width
-plot(light_profile(fl, v = "Petal.Width"))
-plot(light_profile(fl, v = "Petal.Width", by = "Species"))
-
-# 2D partial dependence
-plot(light_profile2d(fl, v = c("Petal.Width", "Petal.Length")))
-
-# Accumulated local effects (ALE) profiles for Petal.Width
-plot(light_profile(fl, v = "Petal.Width", type = "ale"))
-
-# Prediction, response and residual profiles, e.g.
-plot(light_profile(fl, v = "Petal.Width", type = "residual"))
-
-# All in one...
-plot(light_effects(fl, v = "Petal.Width"), use = "all")
-
-# Scatter plots
-plot(light_scatter(fl, v = "Petal.Width", type = "predicted"))
-
-# Variable contribution breakdown for single observation
-plot(light_breakdown(fl, new_obs = iris[2, ]))
-
-# Global surrogate
-plot(light_global_surrogate(fl))
-
-
-## -----------------------------------------------------------------------------
-head(house_prices)
-
-## -----------------------------------------------------------------------------
-prep <- mutate(
-  house_prices,
-  log_price = log(price),
-  grade = as.integer(as.character(grade)),
-  year = as.numeric(format(date, '%Y')),
-  age = year - yr_built,
-  year = factor(year),
-  zipcode = as.factor(as.character(zipcode)),
-  waterfront = factor(waterfront, levels = c(FALSE, TRUE), 
-                      labels = c("no", "yes")))
-
-x <- c("grade", "year", "age", "sqft_living", "sqft_lot", "zipcode",
-       "condition", "waterfront")
-
-## -----------------------------------------------------------------------------
-# Data wrapper for the linear model
-prep_lm <- function(data) {
-  data %>%
-    mutate(sqrt_living = log(sqft_living),
-           sqrt_lot = log(sqft_lot))
-}
-
-# Data wrapper for xgboost
-prep_xgb <- function(data, x) {
-  data %>%
-    select_at(x) %>%
-    mutate_if(Negate(is.numeric), as.integer) %>%
-    data.matrix()
-}
-
-## -----------------------------------------------------------------------------
-# Train / valid / test split (70% / 20% / 10%)
-set.seed(56745)
-ind <- sample(10, nrow(prep), replace = TRUE)
-
-train <- prep[ind >= 4, ]
-valid <- prep[ind %in% 2:3, ]
-test <- prep[ind == 1, ]
-
-(form <- reformulate(x, "log_price"))
-fit_lm <- lm(update.formula(form, . ~ . + I(sqft_living^2)), 
-             data = prep_lm(train))
-
-# Random forest
-fit_rf <- ranger(form, data = train, respect.unordered.factors = TRUE, 
-                 num.trees = 100, seed = 8373)
-cat("R-squared OOB:", fit_rf$r.squared)
-
-# Gradient boosting
-if (has_xgb) {
-  dtrain <- xgboost::xgb.DMatrix(prep_xgb(train, x), 
-                                 label = train[["log_price"]])
-  dvalid <- xgboost::xgb.DMatrix(prep_xgb(valid, x), 
-                                 label = valid[["log_price"]])
-  
-  params <- list(learning_rate = 0.2,
-                 max_depth = 5,
-                 alpha = 1,
-                 lambda = 1,
-                 colsample_bytree = 0.8)
-  
-  fit_xgb <- xgboost::xgb.train(
-    params,
-    data = dtrain,
-    watchlist = list(train = dtrain, valid = dvalid),
-    nrounds = 250,
-    print_every_n = 25,
-    objective = "reg:squarederror"
-  )
-} else {
-  fit_xgb <- rpart(form, data = train, 
-                   control = list(xval = 0, cp = -1, minsplit = 100))
-  prep_xgb <- function(data, x) {
-    data
-  }
-}
-
-## -----------------------------------------------------------------------------
-fl_mean <- flashlight(
-  model = mean(train$log_price), 
-  label = "mean",
-  predict_function = function(mod, X) rep(mod, nrow(X))
-)
+# Make explainer object
 fl_lm <- flashlight(
   model = fit_lm, 
-  label = "lm",
-  predict_function = function(mod, X) predict(mod, prep_lm(X))
-)
-fl_rf <- flashlight(
-  model = fit_rf, 
-  label = "rf",
-  predict_function = function(mod, X) predict(mod, X)$predictions
-)
-fl_xgb <- flashlight(
-  model = fit_xgb, 
-  label = "xgb",
-  predict_function = function(mod, X) predict(mod, prep_xgb(X, x))
-)
-print(fl_xgb)
-
-## -----------------------------------------------------------------------------
-fls <- multiflashlight(
-  list(fl_mean, fl_lm, fl_rf, fl_xgb), 
-  y = "log_price", 
-  linkinv = exp,
-  data = valid, 
-  metrics = list(rmse = rmse, `R-squared` = r_squared)
+  data = iris, 
+  y = "Sepal.Length", 
+  label = "lm",               
+  metrics = list(RMSE = rmse, `R-squared` = r_squared)
 )
 
 ## -----------------------------------------------------------------------------
-fl_lm <- fls$lm
+fl_lm |> 
+  light_performance() |> 
+  plot(fill = "darkred") +
+  labs(x = element_blank(), title = "Performance on training data")
+
+fl_lm |> 
+  light_performance(by = "Species") |> 
+  plot(fill = "darkred") +
+  ggtitle("Performance split by Species")
 
 ## -----------------------------------------------------------------------------
-perf <- light_performance(fls)
-perf
-plot(perf)
+fl_lm |>
+  light_importance(m_repetitions = 4) |> 
+  plot(fill = "darkred") +
+  labs(title = "Permutation importance", y = "Increase in RMSE")
 
 ## -----------------------------------------------------------------------------
-plot(perf, fill = "darkred") +
-  xlab(element_blank())
+fl_lm |> 
+  light_ice("Sepal.Width", n_max = 200) |> 
+  plot(alpha = 0.3, color = "chartreuse4") +
+  labs(title = "ICE curves for 'Sepal.Width'", y = "Prediction")
+
+fl_lm |> 
+  light_ice("Sepal.Width", n_max = 200, center = "middle") |> 
+  plot(alpha = 0.3, color = "chartreuse4") +
+  labs(title = "c-ICE curves for 'Sepal.Width'", y = "Prediction (centered)")
 
 ## -----------------------------------------------------------------------------
-head(perf$data)
+fl_lm |> 
+  light_profile("Sepal.Width", n_bins = 40) |> 
+  plot() +
+  ggtitle("PDP for 'Sepal.Width'")
 
-perf$data %>%
-  ggplot(aes(x = label, y = value, group = metric, color = metric)) +
-  geom_point()
-
-## -----------------------------------------------------------------------------
-(imp <- light_importance(fls, v = x))
-plot(imp, fill = "darkred")
-
-## -----------------------------------------------------------------------------
-cp <- light_ice(fls, v = "sqft_living", n_max = 30, seed = 35)
-plot(cp, alpha = 0.2)
+fl_lm |> 
+  light_profile("Sepal.Width", n_bins = 40, by = "Species") |> 
+  plot() +
+  ggtitle("Same grouped by 'Species'")
 
 ## -----------------------------------------------------------------------------
-cp <- light_ice(fls, v = "sqft_living", n_max = 30, seed = 35, center = "first")
-plot(cp, alpha = 0.2)
+fl_lm |> 
+  light_profile2d(c("Petal.Width", "Petal.Length")) |> 
+  plot()
 
 ## -----------------------------------------------------------------------------
-pd <- light_profile(fls, v = "sqft_living")
-pd
-plot(pd)
+fl_lm |> 
+  light_profile("Sepal.Width", type = "ale") |> 
+  plot() +
+  ggtitle("ALE plot for 'Sepal.Width'")
 
 ## -----------------------------------------------------------------------------
-pd <- light_profile(fls, v = "sqft_living", 
-                    pd_evaluate_at = seq(1000, 4000, by = 100))
-plot(pd)
+fl_lm |> 
+  light_effects("Sepal.Width") |> 
+  plot(use = "all") +
+  ggtitle("Different types of profiles for 'Sepal.Width'")
 
 ## -----------------------------------------------------------------------------
-pd <- light_profile2d(fls, v = c("condition", "grade"))
-plot(pd)
+fl_lm |> 
+  light_breakdown(new_obs = iris[1, ]) |> 
+  plot()
 
 ## -----------------------------------------------------------------------------
-ale <- light_profile(fls, v = "sqft_living", type = "ale")
-ale
-plot(ale)
+fl_lm |> 
+  light_global_surrogate() |> 
+  plot()
 
 ## -----------------------------------------------------------------------------
-plot(light_profile(fls, v = "sqft_living", type = "ale", cut_type = "quantile"))
+library(rpart)
 
-## -----------------------------------------------------------------------------
-format_y <- function(x) format(x, big.mark = "'", scientific = FALSE)
-
-pvp <- light_profile(fls, v = "sqft_living", type = "predicted", 
-                     format = "fg", big.mark = "'")
-plot(pvp) +
-  scale_y_continuous(labels = format_y)
-
-## -----------------------------------------------------------------------------
-rvp <- light_profile(fl_lm, v = "sqft_living", type = "response", format = "fg")
-plot(rvp) +
-  scale_y_continuous(labels = format_y)
-
-## -----------------------------------------------------------------------------
-rvp <- light_profile(fl_lm, v = "sqft_living", type = "response",
-                     stats = "quartiles", format = "fg")
-plot(rvp) +
-  scale_y_continuous(labels = format_y)
-
-## -----------------------------------------------------------------------------
-fls$mean <- NULL
-rvp <- light_profile(fls, v = "sqft_living", type = "residual",
-                     stats = "quartiles", format = "fg")
-plot(rvp) +
-  scale_y_continuous(labels = format_y)
-
-## -----------------------------------------------------------------------------
-plot(rvp, swap_dim = TRUE) +
-  scale_y_continuous(labels = format_y)
-
-## -----------------------------------------------------------------------------
-rvp <- light_profile(fls, v = "sqft_living", type = "residual",
-                     stats = "quartiles", format = "fg", n_bins = 5)
-plot(rvp, swap_dim = TRUE) +
-  scale_y_continuous(labels = format_y)
-
-## -----------------------------------------------------------------------------
-rvp <- light_profile(fls, v = "sqft_living", use_linkinv = FALSE,
-                     stats = "quartiles", pd_center = "mean")
-plot(rvp)
-
-## -----------------------------------------------------------------------------
-eff <- light_effects(fl_lm, v = "condition")
-p <- plot(eff) +
-  scale_y_continuous(labels = format_y)
-p
-
-## -----------------------------------------------------------------------------
-plot_counts(p, eff, alpha = 0.2)
-
-## -----------------------------------------------------------------------------
-eff <- light_effects(flashlight(fl_lm, linkinv = I), v = "condition")
-p <- plot(eff, use = "all") +
-  scale_y_continuous(labels = format_y) +
-  ggtitle("Effects plot on modelled log scale")
-p
-
-## -----------------------------------------------------------------------------
-eff <- light_effects(fl_lm, v = "condition", stats = "quartiles")
-p <- plot(eff, rotate_x = FALSE) +
-   scale_y_continuous(labels = format_y)
-plot_counts(p, eff, fill = "blue", alpha = 0.2, width = 0.3)
-
-## -----------------------------------------------------------------------------
-eff <- light_effects(fls, v = "sqft_living", v_labels = FALSE, 
-                     cut_type = "quantile", n_bins = 25)
-plot(eff, use = c("pd", "ale"), show_points = FALSE) + 
-  scale_y_continuous(labels = format_y) +
-  coord_cartesian(xlim = c(1000, 4000), ylim = c(3e5, 9e5))
-
-## -----------------------------------------------------------------------------
-pr <- light_scatter(fls, v = "sqft_living", n_max = 300)
-plot(pr, alpha = 0.2)
-
-## -----------------------------------------------------------------------------
-st <- light_interaction(fls, v = x, grid_size = 30, n_max = 50, seed = 42)
-plot(st)
-
-## -----------------------------------------------------------------------------
-st_pair <- light_interaction(fls, v = most_important(st, 4), 
-                             pairwise = TRUE, n_max = 50, seed = 42)
-plot(st_pair)
-
-## -----------------------------------------------------------------------------
-bd <- light_breakdown(fl_lm, new_obs = valid[1, ], 
-                      v = x, n_max = 1000, seed = 74)
-plot(bd, size = 3)
-
-## -----------------------------------------------------------------------------
-surr <- light_global_surrogate(fls$xgb, v = x)
-print(surr$data$r_squared)
-plot(surr)
-
-## -----------------------------------------------------------------------------
-fls <- multiflashlight(fls, by = "year")
-
-# Performance
-plot(light_performance(fls))
-
-# With swapped dimension
-plot(light_performance(fls), swap_dim = TRUE)
-
-# Importance
-imp <- light_importance(fls, v = x)
-plot(imp, top_m = 4)
-plot(imp, swap_dim = TRUE)
-
-# Effects: ICE
-plot(light_ice(fls, v = "sqft_living", seed = 4345),
-     alpha = 0.8, facet_scales = "free_y") +
-  scale_y_continuous(labels = format_y)
-
-# Effects: Partial dependence
-plot(light_profile(fls, v = "sqft_living"))
-plot(light_profile(fls, v = "sqft_living"), swap_dim = TRUE)
-
-# Global surrogate
-plot(light_global_surrogate(fls$xgb, v = x, maxdepth = 3))
-
-## -----------------------------------------------------------------------------
-# Add weight info to the flashlight
-fl_weighted <- flashlight(fl, w = "Petal.Length", label = "ols weighted")
-fls <- multiflashlight(list(fl, fl_weighted))
-
-# Performance: rmse and R-squared
-plot(light_performance(fls))
-plot(light_performance(fls, by = "Species"))
-
-# Variable importance by drop in rmse
-plot(light_importance(fls, by = "Species"))
-
-# Partial dependence profiles for Petal.Width
-plot(light_profile(fls, v = "Petal.Width"))
-plot(light_profile(fls, v = "Petal.Width", by = "Species"))
-
-## -----------------------------------------------------------------------------
-ir <- iris
-ir$virginica <- ir$Species == "virginica"
-
-fit <- glm(virginica ~ Sepal.Length + Petal.Width, data = ir, family = binomial)
-
-# Make flashlight - need to select reasonable metrics
-fl <- flashlight(
-  model = fit, 
-  data = ir, 
-  y = "virginica", 
-  label = "lr",
-  metrics = list(logLoss = logLoss, AUC = AUC),
-  predict_function = function(m, d) predict(m, d, type = "response")
+fit_tree <- rpart(
+  Sepal.Length ~ ., 
+  data = iris, 
+  control = list(cp = 0, xval = 0, maxdepth = 5)
 )
 
-# Performance: rmse and R-squared
-plot(light_performance(fl), fill = "darkred")
+# Make explainer object
+fl_tree <- flashlight(
+  model = fit_tree, 
+  data = iris, 
+  y = "Sepal.Length", 
+  label = "tree",               
+  metrics = list(RMSE = rmse, `R-squared` = r_squared)
+)
 
-# Variable importance by drop in rmse
-plot(light_importance(fl, v = c("Sepal.Length", "Petal.Width")), 
-     fill = "darkred")
+# Combine with other explainer
+fls <- multiflashlight(list(fl_tree, fl_lm))
 
-# ICE profiles for Petal.Width
-plot(light_ice(fl, v = "Petal.Width"), alpha = 0.4)
+fls |> 
+  light_performance() |> 
+  plot(fill = "chartreuse4") +
+  labs(x = "Model", title = "Performance")
+
+fls |> 
+  light_importance() |> 
+  plot(fill = "chartreuse4") +
+  labs(y = "Increase in RMSE", title = "Permutation importance")
+
+fls |> 
+  light_profile("Petal.Length", n_bins = 40) |> 
+  plot() +
+  ggtitle("PDP")
+
+fls |> 
+  light_profile("Petal.Length", n_bins = 40, by = "Species") |> 
+  plot() +
+  ggtitle("PDP by Species")
 

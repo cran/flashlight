@@ -1,5 +1,3 @@
-context("grouped operations")
-
 test_that("grouped_counts works", {
   expect_equal(grouped_counts(iris), data.frame(n = 150))
   expect_equal(grouped_counts(iris, by = "Species")$n, c(50, 50, 50))
@@ -12,6 +10,7 @@ test_that("grouped_weighted_mean works", {
   n <- 100
   set.seed(1)
   data <- data.frame(x = rnorm(n), w = runif(n), group = factor(sample(1:3, n, TRUE)))
+  data <- data[order(data$group), ]  # .by does not sort
   expect_equal(grouped_weighted_mean(data, x = "x")$x,
                grouped_stats(data, x = "x")$x)
   expect_equal(grouped_weighted_mean(data, x = "x", w = "w")$x,
